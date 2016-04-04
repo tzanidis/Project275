@@ -58,7 +58,9 @@ class Map:
 	def __repr__ (self):
 		rep = ""
 		for x in range(self.width * self.length):
-			rep += self.map[x]
+			rep += str(self.map[x])
+			if (x+1)%self.width == 0:
+				rep += "\n"
 		return rep
 			
 class Tile:
@@ -114,8 +116,7 @@ class Tile:
 		self.requirement = requirement
 
 	def __repr__ (self):
-		rep = "label: " + str(self.label) + ", mob: " + str(self.mob) + ", speed: " + str(self.speed)
-		return rep
+		return "|label: " + str(self.label) + ", mob: " + str(self.mob) + ", speed: " + str(self.speed) +"|"
 
 class Character:
 	'''A class that contains variables which makeup each tile.
@@ -146,9 +147,9 @@ class Character:
 			self.lvlUpExp = 50*self.level
 
 		if weapon != None:
-			if self.weaponAtk <= int(loot[1]):
-				self.weaponName = loot[0]
-				self.weaponAtk = int(loot[1])
+			if self.weaponAtk <= weapon[1]:
+				self.weaponName = weapon[0]
+				self.weaponAtk = weapon[1]
 
 		if gear != None:
 			if gear == "Climbing Gear" and self.gear[0] == None:
@@ -186,7 +187,7 @@ class Gen:
 	def getMob(length, width):
 		mob = []
 		for x in range(length*width):
-			if random.randrange(1, 4) <= 3:
+			if random.randrange(5) <= 3:
 				mob.append(random.randrange(10, 200))
 			else:
 				mob.append(0)
@@ -197,7 +198,7 @@ class Gen:
 	def getSpeed(length, width):
 		speed = []
 		for x in range(length*width):
-			rnum = random.randrange(1, 4)
+			rnum = random.randrange(5)
 			if rnum >= 3:
 				speed.append(random.randrange(20, 40))
 			elif rnum == 2:
@@ -210,10 +211,10 @@ class Gen:
 	def getRequirement(length, width):
 		requirement = []
 		for x in range(length*width):
-			rnum = random.randrange(1,30)
-			if rnum == 30 :
+			rnum = random.randrange(30)
+			if rnum == 29 :
 				requirement.append("gate")
-			elif rnum in range(20, 29):
+			elif rnum in range(20, 30):
 				requirement.append("hill")
 			else:
 				requirement.append("plains")
@@ -221,16 +222,16 @@ class Gen:
 		return requirement
 
 	def getLoot(mobHp):
-		if random.randrange(1,2) == 2:
-			rnum = random.randrange(1,(mobhp//4))
-			loot = ("Sword of jibberishishish ", str(rnum))
-			print("You got a ", loot, ".")
+		if random.randrange(2) == 1:
+			rnum = random.randrange((mobHp//4)+1)
+			loot = ("Sword of jibberishishish", rnum)
+			print("You got a ", loot[0], ".")
 			return loot
 		else:
 			return None
 
 	def getRequirementAsLoot():
-		if random.randrange(1,30) == 30:
+		if random.randrange(30) == 29:
 			if random.randrange(1,2) == 2:
 				loot = "Climbing Gear"
 			else:
@@ -374,11 +375,10 @@ def main():
 			print("Your answer was incorectly formated, try again.")
 
 	char = Character(gameMap)
-	turns = 0
-
-	while char.tileOn != gameMap.end or turns <= (gameMap.length * gameMap.width * 3):
+	turns = (gameMap.length * gameMap.width * 3)
+	while char.tileOn.idx != gameMap.end and turns > 0:
 		Movement.lookAround(gameMap, char)
-		print("You have ", ((gameMap.length * gameMap.width * 3) - turns), " turns left.")
+		print("You have ", turns, " turns left.")
 		print("")
 		while True:
 			print("Enter a direction you want to go. (up/right/left/down/stay)")
@@ -400,9 +400,9 @@ def main():
 		direction = inp
 		tileTo = Movement.getTileInDir(gameMap, char, direction)
 		Movement.goToTile(char, tileTo)
-		turns += 1
+		turns -= 1
 
-	if turns > (gameMap.length * gameMap.width * 3) and char.tileOn != gameMap.end:
+	if char.tileOn != gameMap.end:
 		print("You ran out of turns. You lose.")
 	else:
 		print("You battle the boss!")

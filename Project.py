@@ -42,22 +42,25 @@ class Map:
 			
 			self.makeMap(label, mob, speed, requirement)
 
+		print(self.map)
 		print("Map made.")
 
 
 	def userMakeMap(self, label):
 		for x in range(self.width * self.length):
-			print("/nThe following inputs will be for tile ", x)
+			print("The following inputs will be for tile ", x)
 			self.map.append(Tile(self.user, x, label[x]))
 
 	def makeMap(self, label, mob, speed, requirement):
 		for x in range(self.width * self.length):
 			self.map.append(Tile(self.user, x, label[x], mob[x], speed[x], requirement[x]))
-			if x%self.width == 0 and x != 0:
-				print("")
-			print("|", x, "|", end = "")
-			
 
+	def __repr__ (self):
+		rep = ""
+		for x in range(self.width * self.length):
+			rep += self.map[x]
+		return rep
+			
 class Tile:
 	'''A class that contains variables which makeup each tile.
 
@@ -109,6 +112,10 @@ class Tile:
 		self.mob = mob
 		self.speed = speed
 		self.requirement = requirement
+
+	def __repr__ (self):
+		rep = "label: " + str(self.label) + ", mob: " + str(self.mob) + ", speed: " + str(self.speed)
+		return rep
 
 class Character:
 	'''A class that contains variables which makeup each tile.
@@ -331,7 +338,7 @@ class Movement:
 				tileTo = gameMap.map[character.tileOn.idx - gameMap.width]
 		
 		elif direction == "right":
-			if (character.tileOn.idx + 1)%gameMap.width == 1: #index off right side of board
+			if (character.tileOn.idx + 1)%gameMap.width == 1 and character.tileOn.idx + 1 != 0: #index off right side of board
 				tileTo = None
 			else:
 				tileTo = gameMap.map[character.tileOn.idx + 1]

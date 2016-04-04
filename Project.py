@@ -53,6 +53,10 @@ class Map:
 	def makeMap(self, label, mob, speed, requirement):
 		for x in range(self.width * self.length):
 			self.map.append(Tile(self.user, x, label[x], mob[x], speed[x], requirement[x]))
+			if x%self.width == 0 and x != 0:
+				print("")
+			print("|", x, "|", end = "")
+			
 
 class Tile:
 	'''A class that contains variables which makeup each tile.
@@ -241,7 +245,7 @@ class Movement:
 	def canMove(character, tileTo):
 		if character.tileOn.label == "wall" or character.tileOn.label == "start":
 			if tileTo is not None:
-				if Movement.checkReq(Character, tileTo):
+				if Movement.checkReq(character, tileTo):
 					return True
 				else:
 					return False
@@ -249,7 +253,7 @@ class Movement:
 				print("The world dissapears there, you do not move up.") 
 				return False
 		else:
-			if Movement.checkReq(Character, tileTo):
+			if Movement.checkReq(character, tileTo):
 				return True
 			else:
 				return False
@@ -279,7 +283,7 @@ class Movement:
 		if character.tileOn.mob != 0:
 			mobToFight = character.tileOn.mob
 			fightExp = math.ceil(mobToFight/(character.charAtk+character.weaponAtk))			
-			print("You defeat a monster that tries to fight you. You gain "+str(fightExp)+" xp.")
+			print("You defeat a monster that tries to fight you. You gain "+str(fightExp)+" xp the monster.")
 			return fightExp
 		print("You pass through without encounters.")
 		return 0
@@ -292,7 +296,7 @@ class Movement:
 			print("You stay in the land you already are.")
 
 		gainedExp = Movement.fightMob(character) + character.tileOn.speed
-		print("You gained ", gainedExp, " in this land.")
+		print("You gained ", gainedExp, " total in this land.")
 		character.updateChar(gainedExp, Gen.getLoot(character.tileOn.mob), Gen.getRequirementAsLoot())	
 
 	def lookAround(gameMap, character):
@@ -342,7 +346,7 @@ class Movement:
 			if (character.tileOn.idx + gameMap.width) > (gameMap.length * gameMap.width): #index out of bounds
 				tileTo = None
 			else:
-				tileTo = gameMap.map[character.tileOn.idx + gameMap.width]
+				tileTo = gameMap.map[character.tileOn.idx + (gameMap.width-(character.tileOn.idx%gameMap.width))]
 		
 		elif direction == "stay":
 			tileTo = character.tileOn
@@ -368,6 +372,7 @@ def main():
 	while char.tileOn != gameMap.end or turns <= (gameMap.length * gameMap.width * 3):
 		Movement.lookAround(gameMap, char)
 		print("You have ", ((gameMap.length * gameMap.width * 3) - turns), " turns left.")
+		print("")
 		while True:
 			print("Enter a direction you want to go. (up/right/left/down/stay)")
 			inp = input()
@@ -399,9 +404,9 @@ def main():
 		print("...")
 		print("You destroy him!")
 		boss = 1000
-		fightExp = math.ceil(boss/(character.charATK+character.weaponAtk))			
+		fightExp = math.ceil(boss/(char.charATK+char.weaponAtk))			
 		updateChar(fightExp, getLoot(boss), getRequirementAsLoot())
-		print("You win! You finished with your character being")
+		print("You win! You finished with your char being")
 		print("level ", char.level, " and ", char.exp, " experience points.")
 
 if __name__ == "__main__":

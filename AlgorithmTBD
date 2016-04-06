@@ -1,0 +1,49 @@
+#Pls put into algorithm.py for use #UNTESTED LMAO#
+def distance_to_boss(gameMap,characterTile):
+	'''
+	Explanation:
+	'''
+	#Travel vertically until on the same width
+	#Travel horizontally until reach boss
+	bossTile = gameMap.end
+	mapWidth = gameMap.width
+	if characterTile > gameMap.end:
+		tiles = (characterTile - bossTile) // mapWidth
+		tileOn = characterTile - (mapWidth * tiles)
+	elif characterTile < bossTile:
+		tiles = (bossTile - characterTile) // mapWidth
+		tileOn = characterTile + (mapWidth * tiles)
+	tiles += abs(tileOn - bossTile)
+	return tiles
+	
+def is_reachable(gameMap,character,turns):
+	'''
+	Explanation:
+	Note: Does not account for hills or gates
+	'''
+	if turns < distance_to_boss(gameMap,character):
+		return False
+	return True
+
+def boss_direction(gameMap,characterTile):
+	'''
+	Explanation: Returns a list of possible directions.
+	'''
+	directions = list()
+	bossTile = gameMap.end
+	#Check horizontal first
+	bossHoriz = bossTile % gameMap.width
+	characterHoriz = characterTile % gameMap.width
+	horizDiff = characterHoriz - bossHoriz
+	if horizDiff < 0:
+		directions.append("right")
+	elif horizDiff > 0:
+		directions.append("left")
+	
+	if characterTile - horizDiff != bossTile:
+		#If not on same horizontal plane, check vertical.
+		if bossTile > characterTile:
+			directions.append("down")
+		else:
+			directions.append("up")
+	return directions

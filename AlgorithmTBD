@@ -47,3 +47,21 @@ def boss_direction(gameMap,characterTile):
 		else:
 			directions.append("up")
 	return directions
+
+def minXP(gameMap, character):
+	def recurse(gameMap, character):
+		directions = boss_direction(gameMap, character.tileOn.idx)
+		for direction in directions:
+			if examine_tile != None:
+				if (examine_tile.requirement == "gate" and character.gear[1] == None):
+					directions.del(direction)
+					continue
+				if examine_tile.requirement == "hill" and character.gear[0] == None:
+					directions.del(direction)
+					continue
+		if len(directions) > 1:
+			#Compare distances
+			examine_tile(directions[0]).speed IDK HOW TO WRITE M8
+	
+	recurse(gameMap, character)
+	

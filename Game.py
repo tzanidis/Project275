@@ -18,30 +18,18 @@ class Map:
 		self.length = length
 
 		if self.user is True: #user input
+			demand = "Input map start and end points as two integers seperated by a space starting with the start :"
+			err = "Your input was incorrectly formated try again."
+			self.start, self.end = getInput(demand, err, 2)
 			
-			while True:
-				print("Input map start as two integers(x,y coordinates) seperated by a space:", end=" ")
-				inp = [int(i) for i in input().split()]
-
-				if inp[0] > self.length or inp[0] < 0 or inp[1] > self.width or inp[1] < 0:
-					print("Your input was incorrectly formated try again.")
-				elif self.start == self.end:
-					print("Your start and end are the same point, input a different point.")
-				else:
-					break
-
 			label = Gen.getLabel(self.start, self.end, self.length, self.width)
-			requirementLoot = Gen.getRequirementLoot(self.length, self.width)
-			weaponLoot = Gen.getWeaponLoot
-			self.userMakeMap(label, requirementLoot, weaponLoot)
+			self.userMakeMap(label)#, requirementLoot, weaponLoot)
 
 		else: #gen input
 			self.start = Gen.getPoint(self.length, self.width) #get rand start
 			self.end = Gen.getPoint(self.length, self.width) #get rand end
-
 			while self.end == self.start:
 				self.end = Gen.getPoint(self.length, self.width) #get rand end
-
 			label = Gen.getLabel(self.start, self.end, self.length, self.width)
 			mob = Gen.getMob(self.length, self.width)
 			speed = Gen.getSpeed(self.length, self.width)
@@ -136,26 +124,23 @@ class Tile:
 		self.label = label
 		self.idx = idx
 
-		while True:
-			print("Input mob hit points for this tile (input 0 if no mob), as a positive integer:", end=" ")
-			self.mob = int(input())
+		demand = "Input mob hit points for this tile (input 0 if no mob), as a positive integer:"
+		err = "Your input was negative, try again."
+		self.mob = getInput(demand, err, 3)
 
-			if self.mob < 0:
-				print("Your input was negative, try again.")
-			else:
-				break
+		demand = "Input speed it takes to cross this tile as a positive integer greater or equal to 0:"
+		self.speed = getInput(demand, err, 3)
+		
+		demand = "Input requirement to travel accross this tile (hill/gate/plains if no requirement):"
+		iterable = ["hill", "gate", "plains"]
+		self.requirement = getInput(demand, err, 0, iterable)
 
-		while True:
-			print("Input speed it takes to cross this tile as a positive integer greater than 1:", end=" ")
-			self.speed = int(input())
+		demand = "Input gear to travel accross tiles that have requirements (Climbing Gear/Gate Key):"
+		iterable = ["Climbing Gear","Gate Key"]
+		self.requirementLoot = getInput(demand, err, 0, iterable)
 
-			if self.speed < 1:
-				print("Your input was less than 1, try again.")
-			else:
-				break
-
-		print("Input requirement to travel accross this tile (input plains if no requirement), as a string:", end=" ")
-		self.requirement = input()
+		demand = "Input a weapon name then the damage it does seperated by a space (Sword 14), that damage being a positive integer"
+		self.weaponLoot = getInput(demand, err, 4)
 
 	def makeTile(self, idx, label, mob, speed, requirement, requirementLoot, weaponLoot):
 		self.label = label
@@ -412,7 +397,7 @@ class Movement:
 		
 		return tileTo
 
-def getInput(demand, err, iterable = None):
+def getInput(demand, err, specialCase, iterable = None):
 	print(demand, end = " ")
 	if iterable != None:
 		inp0 = input()
@@ -422,11 +407,33 @@ def getInput(demand, err, iterable = None):
 		return inp0
 
 	else:
-		inp0, inp1 = [int(i) for i in input().split()]
-		while (inp0 * inp1) <= 1:
-			print(err)
-			print(demand, end = " ")
-		return inp0, inp1
+		if specialCase == 1:
+			inp0, inp1 = [int(i) for i in input().split()]
+			while (inp0 * inp1) <= 1:
+				print(err)
+				print(demand, end = " ")
+			return inp0, inp1
+
+		elif specialCase == 2:
+			inp0, inp1 = [int(i) for i in input().split()]
+			while inp0 != inp1:
+				print(err)
+				print(demand, end = " ")
+			return inp0, inp1
+
+		elif specialCase == 3:
+			inp0 input()
+			while inp0 < 0:
+				print(err)
+				print(demand, end = " ")
+			return inp0
+
+		elif specialCase == 4:
+			inp0, inp1 = input().split()
+			while int(inp1) < 0:
+				print(err)
+				print(demand, end = " ")
+			return inp0, int(inp1)
 
 def play(character, gameMap):
 	turns = (gameMap.length * gameMap.width)
@@ -438,7 +445,7 @@ def play(character, gameMap):
 		iterable = ["up", "left", "right", "down", "stay"]
 		demand = "Enter a direction you want to go. (up/right/left/down/stay): \n"
 		err = "Your answer was incorectly formated, try again."
-		inp = getInput(demand, err, iterable)
+		inp = getInput(demand, err, 0, iterable)
 
 		tileTo = Movement.getTileInDir(gameMap, character, inp)
 		############################################## CanMove #################################################
@@ -492,12 +499,12 @@ def main(gameMap = None):
 		iterable = ["y","n"]
 		demand = "Do you want to generate the map yourself? (y/n):"
 		err = "Your answer was incorectly formated, try again."
-		inp = getInput(demand, err, iterable)
+		inp = getInput(demand, err, 0, iterable)
 		
 		if inp == "y":
 			demand = "Input map width and length as two integers seperated by a space:"
 			err = "Your input will not create a board larger than a single tile."
-			width, length = getInput(demand, err)
+			width, length = getInput(demand, err, 1)
 			gameMap = Map(True, width, length)
 			while Algorithm.howWinnable(gameMap) is not True:
 				gameMap = Map(True, width, length)
@@ -505,7 +512,7 @@ def main(gameMap = None):
 		else:
 			demand = "Input map width and length as two integers seperated by a space:"
 			err = "Your input will not create a board larger than a single tile."
-			width, length = getInput(demand, err)
+			width, length = getInput(demand, err, 1)
 			gameMap = Map(False, width, length)
 			while Algorithm.howWinnable(gameMap) is not True:
 				gameMap = Map(False, width, length)

@@ -1,4 +1,4 @@
-#Pls put into algorithm.py for use #UNTESTED LMAO#
+#Pls put into algorithm.py for use
 import Game
 import copy
 
@@ -57,22 +57,101 @@ class Utilities():
 			else:
 				directions.add("up")
 		return directions
-
+	
+	def tile_xp(character, tile):
+		return tile.speed + math.ceil(tile.mob/(character.charAtk+character.weaponAtk))
+	
+	def priorities(gameMap, character)
+		'''
+		Finds requirement of boss, then requirement of tiles beside it.
+		Ignore tile side that character is unlikely to step on.
+		'''
+		priorityList = list()
+		directionSet = set(["stay","up","down","left","right"])
+		for direction in boss_direction(gameMap, character.tileOn.idx):
+			directionSet.remove(direction)
+		for direction in directionSet:
+			if Game.Movement.getTileInDir(gameMap, character, direction).requirement == "hill" and character.gear[0] == None:
+				if "Climbing Gear" not in priorityList:
+					priorityList.append("Climbing Gear")
+			elif Game.Movement.getTileInDir(gameMap, character, direction).requirement == "gate" and character.gear[1] == None:
+				if "Gate Key" not in priorityList:
+					priorityList.append("Gate Key")
+		if "Climbing Gear" not in priorityList and character.gear[0]==None:
+			priorityList.append("Climbing Gear")
+		if "Gate Key" not in priorityList and character.gear[1]==None:
+			priorityList.append("Gate Key")
+		return priorityList
+		
+	def final_requirements():
+		'''
+		Explanation: Assuming character is on final tile, checks if they have gear
+		to go onto boss tile. If not, find nearest tile with gear and then path back to tile.
+		Then, if character does not have weapon, find nearest tile with weapon. Make sure
+		to cover the case where map literally has no weapon.
+		'''
+		
 	def minXP(gameMap, character):
-		def recurse(gameMap, character):
+		'''
+		Explanation: Assuming that the map is larger than 9 tiles, attempts to find a
+		sub-optimal solution for minimum XP under multiple assumptions.
+		- Fastest way is to path directly towards the boss.
+		- When choosing whether to traverse one tile or another, always takes tile with
+		smallest xp gain. This doesn't absolutely mean that the path with that tile will 
+		have less xp than any other path!
+		- Will try to pick up keys/climbing gear along the way to make pathing easier.
+		- If gets to boss without weapon, attempts to find a weapon before going to boss.
+		- If runs into a case where the user is obstructed in directions toward the boss,
+		go to previous recursive functions until a 'walkable' direction is found.
+		
+		'''
+		global_finished = False
+		global_priority = priorities(gameMap,character)
+		#As soon as boss is defeatable with sub-optimal path, make global_finished = True
+		#Before running algorithm, prioritize gear needed to beat boss.
+		#If boss is on top of a hill or on a gate, always try to find that 'specific' requirement first.
+		#TODO!!
+		
+		#Also TODO: A function that finds the opposite of a direction
+		def recurse(gameMap, character, lastDir):
+			'''
+			Recursive function that recursively paths itself toward the exit.
+			Follows ideas stated in the explanation of minXP()
+			'''
+			#Base Case: If solution already found, return an infinite number
+			if global_finished:
+				return float('inf')
 			directions = boss_direction(gameMap, character.tileOn.idx)
-			for direction in directions:
+			old_directions = directions #Used incase after analysis, len(directions) == 0
+			#For directions toward boss, make sure directions are not obstructed.
+			for direction in old_directions:
 				tile = Game.Movement.getTileInDir(direction)
 				if tile != None:
-					if tile.requirement == "gate" and character.gear[1] == None:
+					if character.gear[1] == None and tile.requirement == "gate":
 						directions.remove(direction)
-						continue
-				if tile.requirement == "hill" and character.gear[0] == None:
-					directions.remove(direction)
-					continue
+					if character.gear[0] == None and tile.requirement == "hill":
+						directions.remove(direction)
+			#Compare distances, can be maximum of 2 directions
 			if len(directions) == 2:
-				#Compare distances, can be maximum of 2 directions
-				lol = Game.Movement.getTileInDir(directions[0])
+				#Directions is 2, both directions are walkable. Choose one with lowest xp.
+				#However, if one of them has a key, prioritize key. (Include climbing gear)
+				currTile = character.tileOn
+				tile1 = Game.Movement.getTileInDir(directions[0])
+				tile2 = Game.Movement.getTileInDir(directions[1])
+				#Compare XPs, if equal take the vertical value.
+				if tile_xp(character, tile1) > tile_xp(character, tile2):
+					character.tileOn = tile2
+				else: #tile_xp(character, tile1) <= tile_xp(character, tile2)
+					character.tileOn = tile1
+				#Check for priorities.
+				
+				
+				
+				result = recurse(gameMap, character)
+				if result >= float('inf'):
+					#GO BACKWARDS M8, NO SOLUTION FOUND!!
+					#Remember to check for "stay", only for starting position
+		#Call recurse, and return
+		return recurse(gameMap, character, "stay")
 	
-		return recurse(gameMap, character)
 	

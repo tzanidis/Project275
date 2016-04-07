@@ -53,7 +53,6 @@ class Map:
 
 		print("Map made.")
 
-
 	def userMakeMap(self, label, requirementLoot, weaponLoot):
 		for x in range(self.width * self.length):
 			print("The following inputs will be for tile ", x)
@@ -113,8 +112,6 @@ class Map:
 		rep = ""
 		for x in range(self.width * self.length):
 			rep += str(self.map[x])
-			if (x+1)%self.width == 0:
-				rep += "\n"
 		return rep
 			
 class Tile:
@@ -160,8 +157,6 @@ class Tile:
 		print("Input requirement to travel accross this tile (input plains if no requirement), as a string:", end=" ")
 		self.requirement = input()
 
-
-
 	def makeTile(self, idx, label, mob, speed, requirement, requirementLoot, weaponLoot):
 		self.label = label
 		self.idx = idx
@@ -192,14 +187,8 @@ class Character:
 		self.lvlUpExp = 50*self.level
 		self.gear = [None]*2
 		self.tileOn = gameMap.map[gameMap.start]
-		if self.tileOn.requirement == "hill":
-			print("You start with Climbing Gear.")
-			self.gear[0] = "Climbing Gear"
-		elif self.tileOn.requirement == "gate":
-			print("You start with a Gate Key.")
-			self.gear[1] = "Gate Key"
 
-	def updateChar(self, gainedExp, weapon = None, gear = None):
+	def updateChar(self, gainedExp, weapon, gear):
 		self.exp += gainedExp
 		while self.exp >= self.lvlUpExp:
 			self.exp -= self.lvlUpExp
@@ -211,13 +200,15 @@ class Character:
 			if self.weaponAtk <= weapon[1]:
 				self.weaponName = weapon[0]
 				self.weaponAtk = weapon[1]
-				print("You got a ", weapon[0], " and it does ", weapon[1], " dmg.")
 
 		if gear != None:
 			if gear == "Climbing Gear" and self.gear[0] == None:
 				self.gear[0] = gear
+				return gear, weapon[0], weapon[1]
 			elif gear == "Gate Key" and self.gear[1] == None:
 				self.gear[1] = gear
+				return gear, weapon[0], weapon[1]
+		return None, None, None
 
 class Gen:
 	''' A class that uses random to generate all kinds of variables
@@ -297,7 +288,6 @@ class Gen:
 	def getWeapAsLoot(character):
 		if character.tileOn.weaponLoot != None:
 			loot = character.tileOn.weaponLoot
-			print("You got a ", loot, ".")
 			return loot
 		else:
 			return None
@@ -318,7 +308,6 @@ class Gen:
 	def getReqAsLoot(character):
 		if character.tileOn.requirementLoot != None:
 			loot = character.tileOn.requirementLoot
-			print("You got a ", loot, ".")
 			return loot
 		else:
 			return None
@@ -332,63 +321,42 @@ class Movement:
 
 	Methods: getPoint(), getLabel(), getMob(), getSpeed(), getRequirement(), getLoot(), getRequirementAsLoot()'''
 
-	def canMove(character, tileTo):
-		if character.tileOn.label == "wall" or character.tileOn.label == "start":
+	def canMove(character, tileTo): #DONE done
 			if tileTo is not None:
-				if Movement.checkReq(character, tileTo):
-					return True
-				else:
-					return False
-			else:
-				print("The world dissapears there, you do not move there.") 
-				return False
-		else:
-			if Movement.checkReq(character, tileTo):
-				return True
-			else:
-				return False
+				if tileTo.requirement == "hill":
+					if character.gear[0] != None:
+						return True, True
+					else:
+						return True, False
 
-	def checkReq(character, tileTo):
-		if tileTo.requirement == "gate":
-			if character.gear[1] != None:
-				print("You unlock and go through the gate with your gate key.")
-				return True
-			else:
-				print("You're blocked by a gate that you don't have a key for.")
-				return False
+				if tileTo.requirement == "gate":
+					if character.gear[1] != None:
+						return True, True
+					else:
+						return True, False
 
-		elif tileTo.requirement == "hill":
-			if character.gear[0] != None:
-				print("You climb the hill with your climbing gear.")
-				return True
+				return True, True
 			else:
-				print("You fail to climb the hill with your climbing gear.")
-				return False
-		else:
-			print("You wander into the terrain.")
-			return True
-
-	def fightMob(character):
-		if character.tileOn.mob != 0:
-			mobToFight = character.tileOn.mob
-			fightExp = math.ceil(mobToFight/(character.charAtk+character.weaponAtk))			
-			print("You defeat a monster that tries to fight you. You gain "+str(fightExp)+" xp the monster.")
-			return fightExp
-		print("You pass through without encounters.")
-		return 0
+				return False, None
 
 	def goToTile(character, tileTo):
-		if Movement.canMove(character, tileTo):
-			character.tileOn = tileTo
-		else:
-			print("You stay in the land you already are.")
+		############################################## CanMove #################################################
+		moveBools = Movement.canMove(character, tileTo)
+		if moveBools[0] and moveBools[1]:
+				character.tileOn = tileTo
+		########################################################################################################
 
-		gainedExp = Movement.fightMob(character) + character.tileOn.speed
-		print("You gained ", gainedExp, " total in this land.")
-		character.updateChar(gainedExp, Gen.getWeapAsLoot(character), Gen.getReqAsLoot(character))	
-		print("Your character is now level ", character.level, " and has ", character.exp, " experience points.")
+		###################################### Fight Mob & Tile Exp ############################################
+		fightExp = math.ceil(character.tileOn.mob/(character.charAtk+character.weaponAtk))
+		gainedExp = fightExp + character.tileOn.speed
+		########################################################################################################
 
-	def lookAround(gameMap, character):
+		######################################### Update Character #############################################
+		items = character.updateChar(gainedExp, Gen.getWeapAsLoot(character), Gen.getReqAsLoot(character))
+		########################################################################################################
+		return fightExp, gainedExp, items[0], items[1], items[2]
+
+	def lookAround(gameMap, character):#DONE done
 		print("")
 		print("You look around and see:")
 		Movement.examineTile(Movement.getTileInDir(gameMap, character, "up"), "up")
@@ -397,7 +365,7 @@ class Movement:
 		Movement.examineTile(Movement.getTileInDir(gameMap, character, "down"), "down")
 		Movement.examineTile(Movement.getTileInDir(gameMap, character, "stay"), "stay")
 
-	def examineTile(tile, direction):
+	def examineTile(tile, direction):#DONE done
 		if tile is not None:
 			if tile.requirement == "gate":
 				print("There is a gate", end=" ")
@@ -413,7 +381,7 @@ class Movement:
 		else:
 			print("There is no land ", direction)
 
-	def getTileInDir(gameMap, character, direction):
+	def getTileInDir(gameMap, character, direction):#DONE done
 		
 		if direction == "up":
 			if character.tileOn.idx < gameMap.width: #negative index
@@ -444,90 +412,124 @@ class Movement:
 		
 		return tileTo
 
-def main(gameMap = None): 
-	if gameMap == None:
-		while True:
-			print("Do you want to generate the map yourself? (y/n)", end = ": ")
-			inp = input()
-			if inp == "y":
-				while True:
-					print("Input map width and length as two integers seperated by a space:", end=" ")
-					width, length = [int(i) for i in input().split()]
-					if (width * length) <= 1:
-						print("Your input will not create a board larger than a single tile.")
-					else:
-						break
+def getInput(demand, err, iterable = None):
+	print(demand, end = " ")
+	if iterable != None:
+		inp0 = input()
+		while inp0 not in iterable:
+			print(err)
+			print(demand, end = " ")
+		return inp0
 
-				gameMap = Map(True, width, length)
-				while Algorithm.howWinnable(gameMap) is not True:
-					gameMap = Map(True, width, length)
-				break
+	else:
+		inp0, inp1 = [int(i) for i in input().split()]
+		while (inp0 * inp1) <= 1:
+			print(err)
+			print(demand, end = " ")
+		return inp0, inp1
 
-			elif inp == "n":
-				while True:
-					print("Input map width and length as two integers seperated by a space:", end=" ")
-					width, length = [int(i) for i in input().split()]
-					if (width * length) <= 1:
-						print("Your input will not create a board larger than a single tile.")
-					else:
-						break
-
-				gameMap = Map(False, width, length)
-				while Algorithm.howWinnable(gameMap) is not True:
-					gameMap = Map(False, width, length)
-				break
-
-			else:
-				print("Your answer was incorectly formated, try again.")
-
-	char = Character(gameMap)
-	turns = (gameMap.length * gameMap.width * 3)
-
-	while char.tileOn.idx != gameMap.end and turns > 0:
-		Map.drawMap(gameMap, char, gameMap.length, gameMap.width)
-		Movement.lookAround(gameMap, char)
+def play(character, gameMap):
+	turns = (gameMap.length * gameMap.width)
+	while character.tileOn.idx != gameMap.end and turns > 0:
+		Map.drawMap(gameMap, character, gameMap.length, gameMap.width)
+		Movement.lookAround(gameMap, character)
 		print("")
 		print("You have ", turns, " turns left.")
-		while True:
-			print("Enter a direction you want to go. (up/right/left/down/stay)")
-			inp = input()
+		iterable = ["up", "left", "right", "down", "stay"]
+		demand = "Enter a direction you want to go. (up/right/left/down/stay): \n"
+		err = "Your answer was incorectly formated, try again."
+		inp = getInput(demand, err, iterable)
 
-			if inp == "up" or inp == "right" or inp == "left" or inp == "down" or inp == "stay":
-				break
+		tileTo = Movement.getTileInDir(gameMap, character, inp)
+		############################################## CanMove #################################################
+		moveBools = Movement.canMove(character, tileTo)
+		if tileTo != gameMap.map[gameMap.end] and moveBools[0]: #tile not None
+			if moveBools[1]: #can move past obstacle
+				if tileTo.requirement is not "plains": #is there an obstacle
+					print("You deal with and move past the", tileTo.requirement, "that was in your way.")
+				else: #there isn't
+					print("You move freely in that direction")
+				update = Movement.goToTile(character, tileTo)
 			else:
-				print("Your answer was incorectly formated, try again.")
-		print("")
-
-		tileGoingTo = Movement.getTileInDir(gameMap, char, inp)
-		canMoveBool = Movement.canMove(char, tileGoingTo)
-		if tileGoingTo != gameMap.map[gameMap.end] and canMoveBool:
-			Movement.goToTile(char, tileGoingTo)
-		elif canMoveBool is False:
-			Movement.goToTile(char, char.tileOn)
+				print("You are blocked by a", tileTo.requirement)
+				print("Instead you wander around the same area you are in.")
+				update = Movement.goToTile(character, tileTo)
+		elif tileTo == gameMap.map[gameMap.end]:
+			print("You move to the end game area")
+			character.tileOn = tileTo
+			break
+		else: #tile None
+			print("The world dissapears, you do not move continue in that direction.")
+			print("Instead you wander around the same area you are in.")
+			update = Movement.goToTile(character, tileTo)
+		########################################################################################################
+		###################################### Fight Mob & Tile Exp ############################################
+		if update[0] == 0:
+			print("You pass through without encounters.")
 		else:
-			char.tileOn = gameMap.map[gameMap.end]
-			print("You move to the end game area.")
-		print(char.tileOn.idx,end=' ')
-		print(gameMap.end)
+			print("You defeat a monster that tries to fight you. You gain", update[0], "xp the monster.")
+		print("You gained", update[1], "total in this land.")
+		########################################################################################################
+		######################################### Update Character #############################################
+		if update[3] != None:
+			print("You got a", update[3], "and it does", update[4], "dmg.")
+		else:
+			print("You didn't get a new weapon.")
+
+		if update[2] != None:
+			print("You got", update[2], ".")
+		else:
+			print("You didn't get any gear.")
+
+		print("Your character is now level", character.level, "and has", character.exp, "experience points.")
+		########################################################################################################
+
 		turns -= 1
 
+def main(gameMap = None): 
+	########################################### Create Game Map ##############################################
+	if gameMap == None:
+		iterable = ["y","n"]
+		demand = "Do you want to generate the map yourself? (y/n):"
+		err = "Your answer was incorectly formated, try again."
+		inp = getInput(demand, err, iterable)
+		
+		if inp == "y":
+			demand = "Input map width and length as two integers seperated by a space:"
+			err = "Your input will not create a board larger than a single tile."
+			width, length = getInput(demand, err)
+			gameMap = Map(True, width, length)
+			while Algorithm.howWinnable(gameMap) is not True:
+				gameMap = Map(True, width, length)
+			
+		else:
+			demand = "Input map width and length as two integers seperated by a space:"
+			err = "Your input will not create a board larger than a single tile."
+			width, length = getInput(demand, err)
+			gameMap = Map(False, width, length)
+			while Algorithm.howWinnable(gameMap) is not True:
+				gameMap = Map(False, width, length)
 
+	########################################## Create Character ##############################################
+	char = Character(gameMap)
+	if char.tileOn.requirement == "hill":
+		print("You start with Climbing Gear.")
+		char.gear[0] = "Climbing Gear"
+	elif char.tileOn.requirement == "gate":
+		print("You start with a Gate Key.")
+		char.gear[1] = "Gate Key"
+
+	############################################# Play Game ##################################################
+	play(char, gameMap)
+
+	############################################## End Game ##################################################
 	if char.tileOn.idx != gameMap.end:
-		print("")
 		print("You ran out of turns. You lose.")
 	else:
-		print("")
-		print("You battle the boss!")
-		print("... ... ...")
-		print("... ...")
-		print("...")
-		print("You destroy him!")
-		boss = 1000
-		fightExp = math.ceil(boss/(char.charAtk+char.weaponAtk))			
-		char.updateChar(fightExp, Gen.getWeapAsLoot(char), Gen.getReqAsLoot(char))
-		print("You win! You finished with your char being")
+		dump = char.updateChar(math.ceil(1000/(char.charAtk+char.weaponAtk)), Gen.getWeapAsLoot(char), Gen.getReqAsLoot(char))
+		print("You find, battle, and destroy the boss!")
+		print("You win! You finished with your chararacter being")
 		print("level ", char.level, " and ", char.exp, " experience points in.")
-		main(gameMap)
 
 if __name__ == "__main__":
 	main()

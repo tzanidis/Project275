@@ -136,6 +136,8 @@ class Utilities():
 		#If boss is on top of a hill or on a gate, always try to find that 'specific' requirement first.
 		#To make sure a character is always updated to latest recursive call, use global_character.
 		
+		##Important algorithm note: Since it's possible to infinitely loop in a path, may want to include
+		##set of already accessed tiles.
 		def recurse(gameMap, character, lastDir):
 			'''
 			Recursive function that recursively paths itself toward the exit.
@@ -161,15 +163,25 @@ class Utilities():
 				character.gear[0] = "Gate Key"
 				global_character = copy.deepcopy(character)
 				return curr_xp
-			#Base Case: If tile is end tile, run special kill_boss() function.
-			
-			#Base Case: Is beside end tile, run last requirements.
+			#Base Case: If tile is end tile, fight the boss and end the algorithm.
+			if character.tileOn.idx == gameMap.end:
+				global_finished = True
+				boss = 1000
+				return math.ceil(boss/(character.charAtk+character.weaponAtk))
+			#Base Case: Is beside final boss tile, run last requirements.
+			if distance_to_boss(gameMap,characterTile) <= 1:
+				#TODO!!
+				#FindWeapon() and FindFinalRequirement()
 			
 			directions = boss_direction(gameMap, character.tileOn.idx)
-			old_directions = directions #Used incase after analysis, len(directions) == 0
+			old_directions = boss_direction(gameMap, character.tileOn.idx) #Used incase after analysis, len(directions) == 0
 			currTile = character.tileOn
 			#Filters directions that are obstructed by obstacles. All filtered directions are initially toward boss.
+			#Also filters direction if direction is tile that is came from.
 			for direction in old_directions:
+				if direction == opposite_direction(lastDir):
+					directions.remove(direction)
+					continue
 				tile = Game.Movement.getTileInDir(direction)
 				if tile != None:
 					if character.gear[1] == None and tile.requirement == "gate":
@@ -223,35 +235,35 @@ class Utilities():
 			if result >= float('inf'):
 				#Attempt to use directions never tried before. If no directions work, return infinite.
 				#Reset tile to initial tile
+				#NOTE: Might want to apply priorities here, perhaps after algorithm is complete
 				character.tileOn = currTile
+				allDirections = set(["up","down","left","right"])
+				#Omit direction that character came from until all paths have been tried.
+				for direction in old_directions:
+					allDirections.remove(direction)
+				#For cases where dead end is not found on initial tile, remove direction whereas user came from.
 				if lastDir != "stay":
-					allDirections = set(["up","down","left","right"])
-					#Omit direction that character came from until all paths have been tried.
 					allDirections.remove(opposite_direction(lastDir))
-					for direction in old_directions:
-						allDirections.remove(direction)
-					#Now with all directions not tried yet, try them.
-					for direction in allDirections:
-						character.tileOn = Game.Movement.getTileInDir(direction)
-						result = curr_xp + recurse(gameMap, character,direction)
-						if result < float('inf'):
-							return result
-						character.tileOn = currTile
-					#If none of the other directions work, return dead end.
-					return float('inf')
-				else:
-					#Special case, cannot get to boss without going backwards from start.
+				#Now with all directions not tried yet, try them.
+				for direction in allDirections:
+					character.tileOn = Game.Movement.getTileInDir(direction)
+					result = curr_xp + recurse(gameMap, character,direction)
+					if result < float('inf'):
+						return result
+					character.tileOn = currTile
+				#If none of the other directions work, return dead end.
+				return float('inf')
 			else:
 				return result
 		#Call recurse, and return
 		while True:
-		if global_restart == True:
+		if global_finished = True:
+			return result
+		elif global_restart == True:
 			#Restart recursive function with new character
 			global_restart = False
 			global_character_new = copy.deepcopy(global_character)
 			result += recurse(gameMap, global_character_new, "stay")
-		elif global_finished == True:
-			return result
 		else:
 			print("Algorithm failed to find path, game is unwinnable?")
 			return None

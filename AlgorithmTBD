@@ -103,14 +103,56 @@ class Utilities():
 			print("Invalid direction entered.")
 			return None
 		
-	def final_requirements():
+	def final_requirements(gameMap, character):
 		'''
-		Explanation: Assuming character is on final tile, checks if they have gear
+		Explanation: final_requirements() is a pathing algorithm.
+		Assuming character is on final tile, checks if they have gear
 		to go onto boss tile. If not, find nearest tile with gear and then path back to tile.
-		Then, if character does not have weapon, find nearest tile with weapon. Make sure
-		to cover the case where map literally has no weapon.
-		'''
+		If entire map does not have needed gear, find nearest other gear first. After obtaining that gear,
+		then search the entire map for needed gear again.
 		
+		Then, if character does not have weapon, find nearest tile with weapon. 
+		If weapon cannot be found in all current accessible tiles, just fight the boss.
+		
+		Returns totalXP gained from adventures.
+		'''
+		findingRequirements = True
+		path = list()
+		current_xp = 0
+		endTile = gameMap.map[gameMap.end]
+		if endTile.requirement != "plains":
+			#Check if already have requirements
+			if endTile.requirement == "hills" and gear[0] != None:
+				pass
+			elif endTile.requirement == "gate" and gear[1] != None:
+				pass
+			else:
+				while findingRequirements:
+					#Search for requirements until requirement found
+					results = search_for_req(gameMap, character,"obstacles")
+					current_xp += results[0]
+					
+		
+		#Look for weapon if character wields no weapon
+		if character.weaponAtk < 1:
+			results = search_for_req(gameMap, character,"weapon")
+			current_xp += results[0]
+			if not results[1]:
+				break
+			
+		character = new_character
+		return current_xp
+	
+	def search_for_req(gameMap, character, requirement):
+		'''
+		Explanation: True search algorithm
+		'''
+		if requirement == "obstacles":
+			
+		elif requirement == "weapon":
+			
+		while search_algorithm:
+			
 		
 	def minXP(gameMap, character):
 		'''
@@ -146,9 +188,10 @@ class Utilities():
 			#Base Case: If solution already found, return an infinite number
 			if global_finished or global_restart:
 				return float('inf')
-			#If intializing recursive function, don't calculate tileXP. Otherwise, get tileXP.
+			#If intializing recursive function, don't calculate tileXP. Otherwise, get tileXP and weapon if available.
 			if lastDir != "stay":
-				curr_xp = tile_xp(character, character.tileOn) 
+				curr_xp = tile_xp(character, character.tileOn)
+				dump = character.updateChar(curr_xp, character.tileOn.weaponLoot, None)
 			else:
 				curr_xp = 0
 			#Base Case: Item found on current tile that character doesn't have, restart recursive call.
@@ -170,12 +213,12 @@ class Utilities():
 				return math.ceil(boss/(character.charAtk+character.weaponAtk))
 			#Base Case: Is beside final boss tile, run last requirements.
 			if distance_to_boss(gameMap,characterTile) <= 1:
-				#TODO!!
-				#FindWeapon() and FindFinalRequirement()
+				return final_requirements(gameMap, character) + recurse(gameMap, character, )
 			
 			directions = boss_direction(gameMap, character.tileOn.idx)
 			old_directions = boss_direction(gameMap, character.tileOn.idx) #Used incase after analysis, len(directions) == 0
 			currTile = character.tileOn
+			oldCharacter = copy.deepcopy(character)
 			#Filters directions that are obstructed by obstacles. All filtered directions are initially toward boss.
 			#Also filters direction if direction is tile that is came from.
 			for direction in old_directions:
@@ -222,6 +265,9 @@ class Utilities():
 							break
 				#Finally after all the decision-making, call recursive function
 				result = curr_xp + recurse(gameMap, character, moving_direction)
+				if result >= float('inf'):
+					character = copy.deepcopy(oldCharacter)
+					result = curr_xp + recurse(gameMap, character, moving_direction)
 			elif len(directions) == 1:
 				#Only one way to move, therefore move there.
 				character.tileOn = Game.Movement.getTileInDir(directions[0])
@@ -246,6 +292,7 @@ class Utilities():
 					allDirections.remove(opposite_direction(lastDir))
 				#Now with all directions not tried yet, try them.
 				for direction in allDirections:
+					character = copy.deepcopy(oldCharacter)
 					character.tileOn = Game.Movement.getTileInDir(direction)
 					result = curr_xp + recurse(gameMap, character,direction)
 					if result < float('inf'):

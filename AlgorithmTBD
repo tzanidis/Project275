@@ -167,6 +167,7 @@ class Utilities():
 			
 			directions = boss_direction(gameMap, character.tileOn.idx)
 			old_directions = directions #Used incase after analysis, len(directions) == 0
+			currTile = character.tileOn
 			#Filters directions that are obstructed by obstacles. All filtered directions are initially toward boss.
 			for direction in old_directions:
 				tile = Game.Movement.getTileInDir(direction)
@@ -179,7 +180,6 @@ class Utilities():
 			if len(directions) == 2:
 				#Directions is 2, both directions are walkable. Choose one with lowest xp.
 				#However, if one of them has a key, prioritize key. (Include climbing gear)
-				currTile = character.tileOn
 				tile1 = Game.Movement.getTileInDir(directions[0])
 				tile2 = Game.Movement.getTileInDir(directions[1])
 				#Compare XPs, if equal take the vertical value.
@@ -221,9 +221,24 @@ class Utilities():
 				print("Unknown case! Terminate!")
 			#Check if results result in a dead end
 			if result >= float('inf'):
-				#Attempt to use directions never tried before. If no directions work, return with None found.
+				#Attempt to use directions never tried before. If no directions work, return infinite.
+				#Reset tile to initial tile
+				character.tileOn = currTile
 				if lastDir != "stay":
-				
+					allDirections = set(["up","down","left","right"])
+					#Omit direction that character came from until all paths have been tried.
+					allDirections.remove(opposite_direction(lastDir))
+					for direction in old_directions:
+						allDirections.remove(direction)
+					#Now with all directions not tried yet, try them.
+					for direction in allDirections:
+						character.tileOn = Game.Movement.getTileInDir(direction)
+						result = curr_xp + recurse(gameMap, character,direction)
+						if result < float('inf'):
+							return result
+						character.tileOn = currTile
+					#If none of the other directions work, return dead end.
+					return float('inf')
 				else:
 					#Special case, cannot get to boss without going backwards from start.
 			else:
@@ -240,6 +255,3 @@ class Utilities():
 		else:
 			print("Algorithm failed to find path, game is unwinnable?")
 			return None
-			
-	
-	

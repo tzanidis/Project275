@@ -1,5 +1,6 @@
 #Pls put into algorithm.py for use #UNTESTED LMAO#
 import Game
+import copy
 
 class Utilities():
 	def distance_to_boss(gameMap,characterTile):

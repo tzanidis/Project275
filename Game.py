@@ -362,16 +362,14 @@ class Gen: #Done And Commented
 		else:
 			return None
 
-class Movement:
-	''' A class that uses random to generate all kinds of variables
+class Movement: #Done And Commented
+	''' A class that deals with all character moving properties.
 
-	Arguments:
+	Methods: canMove(), goToTile(), lookAround(), examineTile(), getTileInDir().'''
 
-	Self Variables: None
+	def canMove(character, tileTo):
+		'''A function that checks if you can move to a certain tile.'''
 
-	Methods: getPoint(), getLabel(), getMob(), getSpeed(), getRequirement(), getLoot(), getRequirementAsLoot()'''
-
-	def canMove(character, tileTo): #DONE done
 			if tileTo is not None:
 				if tileTo.requirement == "hill":
 					if character.gear[0] != None:
@@ -390,6 +388,9 @@ class Movement:
 				return False, None
 
 	def goToTile(character, tileTo):
+		'''A function that takes a tile the character is going to, 
+		checks if it is possible to go to, and updates the character based on the new tile.'''
+		
 		############################################## CanMove #################################################
 		moveBools = Movement.canMove(character, tileTo)
 		if moveBools[0] and moveBools[1]:
@@ -406,7 +407,10 @@ class Movement:
 		########################################################################################################
 		return fightExp, gainedExp, items[0], items[1], items[2]
 
-	def lookAround(gameMap, character):#DONE done
+	def lookAround(gameMap, character):
+		'''A function that calls a different function 5 times.
+		Pretty pointless, but clean looking.'''
+
 		print("")
 		print("You look around and see:")
 		Movement.examineTile(Movement.getTileInDir(gameMap, character, "up"), "up")
@@ -415,7 +419,10 @@ class Movement:
 		Movement.examineTile(Movement.getTileInDir(gameMap, character, "down"), "down")
 		Movement.examineTile(Movement.getTileInDir(gameMap, character, "stay"), "stay")
 
-	def examineTile(tile, direction):#DONE done
+	def examineTile(tile, direction):
+		'''A function that describes a tile.
+		Future note could be replaced by a different __repr__() in Tile.'''
+
 		if tile is not None:
 			if tile.requirement == "gate":
 				print("There is a gate", end=" ")
@@ -431,7 +438,9 @@ class Movement:
 		else:
 			print("There is no land ", direction)
 
-	def getTileInDir(gameMap, character, direction):#DONE done
+	def getTileInDir(gameMap, character, direction):
+		'''A function that takes a direction and finds the tile in that direction.
+		Returns None if there is no tile there.'''
 		
 		if direction == "up":
 			if character.tileOn.idx < gameMap.width: #negative index
@@ -462,7 +471,9 @@ class Movement:
 		
 		return tileTo
 
-def getInput(demand, err, specialCase, iterable = None, numTiles = None):
+def getInput(demand, err, specialCase, iterable = None, numTiles = None): #Done And Commented
+	'''A function that will ask check and return a users input.'''
+
 	print(demand, end = " ")
 	if iterable != None:
 		inp0 = input()
@@ -525,7 +536,9 @@ def getInput(demand, err, specialCase, iterable = None, numTiles = None):
 					print(err)
 					print(demand, end = " ")
 
-def play(character, gameMap):
+def play(character, gameMap): #Done And Commented
+	'''A function that manages the core game-play.'''
+
 	turns = (gameMap.length * gameMap.width)
 	while character.tileOn.idx != gameMap.end and turns > 0:
 		Map.drawMap(gameMap, character, gameMap.length, gameMap.width)
@@ -583,7 +596,9 @@ def play(character, gameMap):
 
 		turns -= 1
 
-def main(gameMap = None): 
+def main(gameMap = None): #Done And Commented
+	'''THE function that initializes the entire game and runs the game.'''
+
 	########################################### Create Game Map ##############################################
 	if gameMap == None:
 		iterable = ["y","n"]

@@ -3,8 +3,14 @@ import math
 from collections import deque
 
 class Winnable():
+	''' A class that checks if a map is winnable and the path expected.
+
+	Methods: getPoint(), getLabel(), getMob(), getSpeed(), getRequirement(), getWeaponLoot(), 
+	getWeapAsLoot(), getRequirementLoot(), getReqAsLoot()'''
 
 	def isWinnable(gameMap):
+		'''A function that checks if it can reach the end tile.'''
+
 		character = Game.Character(gameMap)
 		acquiredRequirements = set(character.gear)
 		accessibleTiles = set()
@@ -50,6 +56,8 @@ class Winnable():
 		return False #checked all accessible tiles and not are end, game is not winnable
 
 	def makeGraph(gameMap):
+		'''A function that turns the list that is the games map into a graph represented by a dictionary'''
+
 		graphAsDict = {}
 		character = Game.Character(gameMap)
 		for tile in gameMap.map:
@@ -63,31 +71,63 @@ class Winnable():
 
 		return (graphAsDict)
 
+	def drawPath(minPath, gameMap):
+		'''A function that prints the path the AI took'''
+
+		for index in range(gameMap.width*gameMap.length):
+			tile = gameMap.map[index]
+			if tile == gameMap.map[gameMap.start]:
+				print('S',end='')
+
+			elif tile == gameMap.map[gameMap.end]: #Decision for Boss tile
+				print('E',end='')
+
+			elif tile in minPath: #AI was on that tile
+				print('*', end='')
+
+			else: #DEFAULT TILE
+				print('-',end='')
+
+			print(" ",end='') #new line if at edge
+			if (index+1)%gameMap.width==0:
+				print("")
+
 	def minExp(pathsFound, gameMap):
-		pathsFoundExp = set()
+		'''A function that traces and calculates the exp of each path returning the minimum of the paths in terms of exp.'''
+
+		pathsFoundExp = list()
 		printed = False
 
 		for aMinPath in pathsFound:
 			character = Game.Character(gameMap)
 			for step in aMinPath:
 				canMoveBool = Game.Movement.canMove(character, step)
-				if canMoveBool:
+				if canMoveBool[0] and canMoveBool[1]:
 					if step == gameMap.map[gameMap.end]:
 						if printed is False:
 							print("Game is winnable.")
 							printed = True
 		
 						dump = character.updateChar(math.ceil(1000/(character.charAtk + character.weaponAtk)), Game.Gen.getWeapAsLoot(character), Game.Gen.getReqAsLoot(character))
-						pathsFoundExp.add((character.level, character.exp))
+						pathsFoundExp.append(( ( (character.level, character.exp),(len(aMinPath)) ),(aMinPath) ))
 					else:
 						Game.Movement.goToTile(character, step)
 				else:
 					break
 
-		print(min(pathsFoundExp))
-		return min(pathsFoundExp)
+		pathsFoundExpToMin = [i[0] for i in pathsFoundExp]
+		minIdx = pathsFoundExpToMin.index(min(pathsFoundExpToMin))
+		print("min exp path index:", minIdx)
+		print("min exp", pathsFoundExp[minIdx][0][0]) #THIS IS THE (LVL, EXP)
+		print("min path", pathsFoundExp[minIdx][1], end="\n\n") #THIS IS THE [PATH]
+		print("Path taken by AI, not including any stays.")
+		Winnable.drawPath(pathsFoundExp[minIdx][1], gameMap)
+		print()
+		return pathsFoundExp[minIdx][0][0]
 
 	def minExpBrute(gameMap, turns):
+		'''A function that finds ALL possible paths to the end.'''
+
 		graph = Winnable.makeGraph(gameMap)
 		start, end = gameMap.map[gameMap.start], gameMap.map[gameMap.end]
 		q = deque([[start]])
@@ -105,24 +145,34 @@ class Winnable():
 					newPath = tmpPath + [linkNode]
 					q.append(newPath)
 
-		return Winnable.minExp(pathsFound, gameMap)
+		if len(pathsFound) == 0:
+			return False, None
+		else:
+			return True, Winnable.minExp(pathsFound, gameMap)
 
 def howWinnable(gameMap):
+	'''A function that checks if the game is winnable,
+	and print the expected minimum character level and exp requiered.
+	Brute Force if less than 12 tiles: 100% accurate.
+	Heuristics if larger than 12 tiles: accurate, but assumptions made.
+	Returns if beatable or not.'''
+
 	numTiles = (gameMap.width * gameMap.length)
 	if numTiles > 12:
 		if Winnable.isWinnable(gameMap):
 			print("Game is winnable... ")
-			Winnable.minPath(gameMap) #Assumes you will accumulate adequate damage
+			Winnable.minPath(gameMap)
 			return True
 		else:
 			print("Game is not winnable, making new map.")
 			return False
 	else:
-		if Winnable.minExpBrute(gameMap, numTiles):
-			return True
+		win_exp = Winnable.minExpBrute(gameMap, numTiles)
+		if win_exp[0]:
+			return win_exp
 		else:
 			print("Game is not winnable, making new map.")
-			return False
+			return False, None
 
 if __name__ == "__main__":
 	howWinnable(Game.Map(False))

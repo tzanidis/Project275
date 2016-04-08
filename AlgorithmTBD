@@ -292,7 +292,8 @@ class Utilities():
 				return math.ceil(boss/(character.charAtk+character.weaponAtk))
 			#Base Case: Is beside final boss tile, run last requirements.
 			if distance_to_boss(gameMap,characterTile) <= 1:
-				return final_requirements(gameMap, character) + recurse(gameMap, character, )
+				#Guranteed to fight boss, just use a return.
+				return final_requirements(gameMap, character) + recurse(gameMap, character, boss_direction[0])
 			
 			directions = boss_direction(gameMap, character.tileOn.idx)
 			old_directions = boss_direction(gameMap, character.tileOn.idx) #Used incase after analysis, len(directions) == 0

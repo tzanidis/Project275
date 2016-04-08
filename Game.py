@@ -1,6 +1,7 @@
 import random
 import math
 import Algorithm
+import os
 
 class Map: #Done And Commented
 	'''A class that holds the tiles in a set order for later retrieval,
@@ -183,6 +184,9 @@ class Tile: #Done And Commented
 		self.requirementLoot = requirementLoot
 		self.weaponLoot = weaponLoot
 
+	#def __eq__(self, other):
+	#	return self
+
 	def __repr__ (self):
 		'''print(Tile) prints returned string.'''
 
@@ -241,8 +245,6 @@ class Character: #Done And Commented
 
 class Gen: #Done And Commented
 	''' A class that uses random to generate all kinds of variables
-
-	Self Variables: None
 
 	Methods: getPoint(), getLabel(), getMob(), getSpeed(), getRequirement(), getWeaponLoot(), 
 	getWeapAsLoot(), getRequirementLoot(), getReqAsLoot()'''
@@ -370,27 +372,27 @@ class Movement: #Done And Commented
 	def canMove(character, tileTo):
 		'''A function that checks if you can move to a certain tile.'''
 
-			if tileTo is not None:
-				if tileTo.requirement == "hill":
-					if character.gear[0] != None:
-						return True, True
-					else:
-						return True, False
+		if tileTo is not None:
+			if tileTo.requirement == "hill":
+				if character.gear[0] != None:
+					return True, True
+				else:
+					return True, False
 
-				if tileTo.requirement == "gate":
-					if character.gear[1] != None:
-						return True, True
-					else:
-						return True, False
+			if tileTo.requirement == "gate":
+				if character.gear[1] != None:
+					return True, True
+				else:
+					return True, False
 
-				return True, True
-			else:
-				return False, None
+			return True, True
+		else:
+			return False, False
 
 	def goToTile(character, tileTo):
 		'''A function that takes a tile the character is going to, 
 		checks if it is possible to go to, and updates the character based on the new tile.'''
-		
+
 		############################################## CanMove #################################################
 		moveBools = Movement.canMove(character, tileTo)
 		if moveBools[0] and moveBools[1]:
@@ -501,7 +503,7 @@ def getInput(demand, err, specialCase, iterable = None, numTiles = None): #Done 
 			while True:
 				try:
 					inp0, inp1 = [int(i) for i in input().split()]
-					if (inp0 == inp1) and (inp0 not in range(0,(numTiles)-1)) and (inp1 is in range(0,(numTiles)-1)):
+					if (inp0 == inp1) and (inp0 not in range(0,(numTiles)-1)) and (inp1 not in range(0,(numTiles)-1)):
 						print(err)
 						print(demand, end = " ")
 					else:
@@ -564,7 +566,7 @@ def play(character, gameMap): #Done And Commented
 				print("You are blocked by a", tileTo.requirement)
 				print("Instead you wander around the same area you are in.")
 				update = Movement.goToTile(character, tileTo)
-		elif tileTo == gameMap.map[gameMap.end] and moveBools[0]:
+		elif tileTo == gameMap.map[gameMap.end] and moveBools[0] and moveBools[1]:
 			print("You move to the end game area")
 			character.tileOn = tileTo
 			break
@@ -611,7 +613,8 @@ def main(gameMap = None): #Done And Commented
 			err = "Your input will not create a board larger than a single tile."
 			width, length = getInput(demand, err, 1)
 			gameMap = Map(True, width, length)
-			while Algorithm.howWinnable(gameMap) is not True:
+			win_exp = Algorithm.howWinnable(gameMap)
+			while win_exp[0] is False:
 				gameMap = Map(True, width, length)
 			
 		else:
@@ -619,7 +622,8 @@ def main(gameMap = None): #Done And Commented
 			err = "Your input will not create a board larger than a single tile."
 			width, length = getInput(demand, err, 1)
 			gameMap = Map(False, width, length)
-			while Algorithm.howWinnable(gameMap) is not True:
+			win_exp = Algorithm.howWinnable(gameMap)
+			while win_exp[0] is False:
 				gameMap = Map(False, width, length)
 
 	########################################## Create Character ##############################################
@@ -642,6 +646,7 @@ def main(gameMap = None): #Done And Commented
 		print("You find, battle, and destroy the boss!")
 		print("You win! You finished with your chararacter being")
 		print("level ", char.level, " and ", char.exp, " experience points in.")
+		print("The computers best was: level", win_exp[1][0], ", experience", win_exp[1][1])
 
 if __name__ == "__main__":
 	main()

@@ -61,7 +61,7 @@ class Utilities():
 	def tile_xp(character, tile):
 		return tile.speed + math.ceil(tile.mob/(character.charAtk+character.weaponAtk))
 	
-	def priorities(gameMap, character)
+	def priorities(gameMap, character):
 		'''
 		Finds requirement of boss, then requirement of tiles beside it.
 		Ignore tile side that character is unlikely to step on.
@@ -102,7 +102,7 @@ class Utilities():
 		else:
 			print("Invalid direction entered.")
 			return None
-		
+	
 	def final_requirements(gameMap, character):
 		'''
 		Explanation: final_requirements() is a pathing algorithm.
@@ -127,32 +127,111 @@ class Utilities():
 			elif endTile.requirement == "gate" and gear[1] != None:
 				pass
 			else:
-				while findingRequirements:
+				while True:
 					#Search for requirements until requirement found
 					results = search_for_req(gameMap, character,"obstacles")
 					current_xp += results[0]
+					character = results[2]
+					if endTile.requirement == "hills" and results[1] == "Climbing Gear":
+						break
+					elif endTile.requirement == "gate" and results[1] == "Gate Key":
+						break
 					
 		
 		#Look for weapon if character wields no weapon
 		if character.weaponAtk < 1:
 			results = search_for_req(gameMap, character,"weapon")
-			current_xp += results[0]
-			if not results[1]:
-				break
-			
-		character = new_character
+			if results != None:
+				character = results[1]
+				current_xp += results[0]
+				
 		return current_xp
 	
 	def search_for_req(gameMap, character, requirement):
 		'''
-		Explanation: True search algorithm
+		Explanation: True search/pathfinding algorithm
+		Recursive function that searches all tiles, keeps all tiles searched in a set so search does not search a tile twice.
+		Assigns a value to each tile based on the XP needed to get there.
 		'''
 		if requirement == "obstacles":
-			
+			#accessibleTile is a tuple that stores tile, character, current xp, and tile path
+			accessibleTiles = [(Game.Movement.getTileInDir(gameMap, character, "up"),character,0,[character.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, character, "down"),character,0,[character.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, character, "left"),character,0,[character.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, character, "right"),character,0,[character.tileOn])]
+			searchedTiles = set()
+			current_xp = 0
+			while accessibleTiles:
+				accessedTile = accessibleTiles.pop(0)
+				currChar = copy.deepcopy(accessedTile[1])
+				#Base Case: If tile already searched, skip
+				if accessedTile[0] in searchedTiles:
+					continue
+				#Base Case: Can't go on boss tile or None tile
+				if accessedTile[0] == None or accessedTile[0] == gameMap.map[gameMap.end]:
+					continue
+				#Base Case: Can't go through tile where gear is required and character does not have
+				if accessedTile[0].requirement == "hill" and currChar.gear[0] == None:
+					continue
+				if accessedTile[0].requirement == "gate" and currChar.gear[1] == None:
+					continue
+				searchedTiles.add(accessedTile[0])
+				tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
+				current_xp = tileXP + accessedTile[2]
+				totalGet = currChar.updateChar(tileXP,accessedTile[0].weapon,accessedTile[0].gear)
+				if totalGet[0] != None:
+					#Gear found, return
+					totalTileXP = 0
+					while accessedTile[3]:
+						previousTile = accessedTile[3].pop()
+						tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
+						currChar.updateChar(tileXP,(None, None),None)
+						totalTileXP += tileXP
+					return (current_xp + totalTileXP, totalGet[0],currChar)
+				#If no gear found, add neighbours to accessibletiles
+				accessibleTiles += [(Game.Movement.getTileInDir(gameMap, currChar, "up"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, currChar, "down"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, currChar, "left"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, currChar, "right"),currChar,current_xp,accessedTile[3]+[currChar.tileOn])]
+			print("No gear found, gg kill yourself")
+			return None
 		elif requirement == "weapon":
-			
-		while search_algorithm:
-			
+			#accessibleTile is a tuple that stores tile, character, current xp, and tile path
+			accessibleTiles = [(Game.Movement.getTileInDir(gameMap, character, "up"),character,0,[character.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, character, "down"),character,0,[character.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, character, "left"),character,0,[character.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, character, "right"),character,0,[character.tileOn])]
+			searchedTiles = set()
+			current_xp = 0
+			while accessibleTiles:
+				accessedTile = accessibleTiles.pop(0)
+				#Base Case: If tile already searched, skip
+				if accessedTile[0] in searchedTiles:
+					continue
+				#Base Case: Can't go on boss tile or None tile
+				if accessedTile[0] == None or accessedTile[0] == gameMap.map[gameMap.end]:
+					continue
+				searchedTiles.add(accessedTile[0])
+				currChar = copy.deepcopy(accessedTile[1])
+				tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
+				current_xp = tileXP + accessedTile[2]
+				totalGet = currChar.updateChar(tileXP,accessedTile[0].weapon,accessedTile[0].gear)
+				if accessedTile.weaponLoot != (None,None):
+					#Gear found, return
+					totalTileXP = 0
+					while accessedTile[3]:
+						previousTile = accessedTile[3].pop()
+						tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
+						currChar.updateChar(tileXP,(None, None),None)
+						totalTileXP += tileXP
+					return (current_xp + totalTileXP,currChar)
+				#If no gear found, add neighbours to accessibletiles
+				accessibleTiles += [(Game.Movement.getTileInDir(gameMap, currChar, "up"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, currChar, "down"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, currChar, "left"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
+			(Game.Movement.getTileInDir(gameMap, currChar, "right"),currChar,current_xp,accessedTile[3]+[currChar.tileOn])]
+			print("No weapon found, don't kill yourself tho")
+			return None
 		
 	def minXP(gameMap, character):
 		'''
@@ -201,7 +280,7 @@ class Utilities():
 				character.gear[0] = "Climbing Gear"
 				global_character = copy.deepcopy(character)
 				return curr_xp
-			elif character.gear[1] == None and character.tileOn.requirementLoot == "Gate Key"
+			elif character.gear[1] == None and character.tileOn.requirementLoot == "Gate Key":
 				global_restart = True
 				character.gear[0] = "Gate Key"
 				global_character = copy.deepcopy(character)
@@ -213,7 +292,8 @@ class Utilities():
 				return math.ceil(boss/(character.charAtk+character.weaponAtk))
 			#Base Case: Is beside final boss tile, run last requirements.
 			if distance_to_boss(gameMap,characterTile) <= 1:
-				return final_requirements(gameMap, character) + recurse(gameMap, character, )
+				#Guranteed to fight boss, just use a return.
+				return final_requirements(gameMap, character) + recurse(gameMap, character, boss_direction[0])
 			
 			directions = boss_direction(gameMap, character.tileOn.idx)
 			old_directions = boss_direction(gameMap, character.tileOn.idx) #Used incase after analysis, len(directions) == 0
@@ -231,12 +311,14 @@ class Utilities():
 						directions.remove(direction)
 					if character.gear[0] == None and tile.requirement == "hill":
 						directions.remove(direction)
+				else:
+					directions.remove(direction)
 			#Figure out which direction to go, can be maximum of 2 directions
 			if len(directions) == 2:
 				#Directions is 2, both directions are walkable. Choose one with lowest xp.
 				#However, if one of them has a key, prioritize key. (Include climbing gear)
-				tile1 = Game.Movement.getTileInDir(directions[0])
-				tile2 = Game.Movement.getTileInDir(directions[1])
+				tile1 = Game.Movement.getTileInDir(gameMap, character, directions[0])
+				tile2 = Game.Movement.getTileInDir(gameMap, character, directions[1])
 				#Compare XPs, if equal take the vertical value.
 				if tile_xp(character, tile1) > tile_xp(character, tile2):
 					character.tileOn = tile2
@@ -270,7 +352,7 @@ class Utilities():
 					result = curr_xp + recurse(gameMap, character, moving_direction)
 			elif len(directions) == 1:
 				#Only one way to move, therefore move there.
-				character.tileOn = Game.Movement.getTileInDir(directions[0])
+				character.tileOn = Game.Movement.getTileInDir(gameMap, character, directions[0])
 				result = curr_xp + recurse(gameMap, character, directions[0])
 			#If len(directions) is not greater than 0, then dead end is reached!
 			elif len(directions) == 0:
@@ -292,11 +374,12 @@ class Utilities():
 					allDirections.remove(opposite_direction(lastDir))
 				#Now with all directions not tried yet, try them.
 				for direction in allDirections:
-					character = copy.deepcopy(oldCharacter)
-					character.tileOn = Game.Movement.getTileInDir(direction)
-					result = curr_xp + recurse(gameMap, character,direction)
-					if result < float('inf'):
-						return result
+					if Game.Movement.getTileInDir(gameMap,oldCharacter,direction) != None:
+						character = copy.deepcopy(oldCharacter)
+						character.tileOn = Game.Movement.getTileInDir(gameMap, character, direction)
+						result = curr_xp + recurse(gameMap, character,direction)
+						if result < float('inf'):
+							return result
 					character.tileOn = currTile
 				#If none of the other directions work, return dead end.
 				return float('inf')
@@ -304,13 +387,13 @@ class Utilities():
 				return result
 		#Call recurse, and return
 		while True:
-		if global_finished = True:
-			return result
-		elif global_restart == True:
-			#Restart recursive function with new character
-			global_restart = False
-			global_character_new = copy.deepcopy(global_character)
-			result += recurse(gameMap, global_character_new, "stay")
-		else:
-			print("Algorithm failed to find path, game is unwinnable?")
-			return None
+			if global_finished == True:
+				return result
+			elif global_restart == True:
+				#Restart recursive function with new character
+				global_restart = False
+				global_character_new = copy.deepcopy(global_character)
+				result += recurse(gameMap, global_character_new, "stay")
+			else:
+				print("Algorithm failed to find path, game is unwinnable?")
+				return None

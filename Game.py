@@ -2,28 +2,35 @@ import random
 import math
 import Algorithm
 
-class Map:
-	'''A class that holds the tiles in a set order for later retrieval.
+class Map: #Done And Commented
+	'''A class that holds the tiles in a set order for later retrieval,
+	along with other key pieces of information.
 	
-	Arguments: user, is a boolean that denotes whether the user will create the map or if it will be randomly generated.
+	Self Variables: map, user, width, length, start, end.
+	map, a list of Tile classes.
+	user, boolean of whether the user wants to generate the map themselves or not.
+	width, an integer that is one of the dimensions of the grid.
+	length, an integer that is one of the dimensions of the grid.
+	start, an integer that is the index of the start tile in the list map.
+	end, an integer that is the index of the end tile in the list map.
 	
-	Self Variables: map, start, end, length, width, user.
-	
-	Methods: make_map(), user_make_map().'''
+	Methods: __init__(), userMakeMap(), makeMap(), drawMap() __repr__().'''
 
 	def __init__(self, user, width, length):
+		'''A function that initializes all self variables whether it is user or computer generated.'''
+
 		self.map = []
 		self.user = user
 		self.width = width
 		self.length = length
 
-		if self.user is True: #user input
+		if self.user: #user input
 			demand = "Input map start and end points as two integers seperated by a space starting with the start :"
 			err = "Your input was incorrectly formated try again."
-			self.start, self.end = getInput(demand, err, 2)
+			self.start, self.end = getInput(demand, err, 2, None, (self.width*self.length))
 			
 			label = Gen.getLabel(self.start, self.end, self.length, self.width)
-			self.userMakeMap(label)#, requirementLoot, weaponLoot)
+			self.userMakeMap(label)
 
 		else: #gen input
 			self.start = Gen.getPoint(self.length, self.width) #get rand start
@@ -41,28 +48,33 @@ class Map:
 
 		print("Map made.")
 
-	def userMakeMap(self, label, requirementLoot, weaponLoot):
+	def userMakeMap(self, label):
+		'''A function that calls all the tiles to be made for the holder.'''
+
 		for x in range(self.width * self.length):
 			print("The following inputs will be for tile ", x)
-			self.map.append(Tile(self.user, x, label[x], requirementLoot[x], weaponLoot[x]))
+			self.map.append(Tile(self.user, x, label[x]))
 
 	def makeMap(self, label, mob, speed, requirement, requirementLoot, weaponLoot):
+		'''A function that calls all the tiles to be made for the holder.'''
+		
 		for x in range(self.width * self.length):
 			self.map.append(Tile(self.user, x, label[x], mob[x], speed[x], requirement[x], requirementLoot[x], weaponLoot[x]))
 
 	def drawMap(gameMap,character, length, width):
+		'''A function that draws a representation of the map in ascii keys.'''
+
 		for index in range(width*length):
 			tile = gameMap.map[index]
 			if tile == character.tileOn:
 				print('@',end='')
-			elif tile.label == "end":
+			elif tile.label == "end": #Decision for Boss tile
 				if tile.requirement == "gate" or tile.requirement == "hill":
 					print('b',end='')
 				else:
 					print('B',end='')
-			elif tile.requirement == "gate":
-				#need another print statement checking if you have gate key (or there is key/gear on tile)
-				
+
+			elif tile.requirement == "gate": #Decision for Gate tiles
 				if character.gear[1] != None:
 					if tile.requirementLoot == "Climbing Gear" and character.gear[0] == None:
 						print('C',end='')
@@ -73,54 +85,67 @@ class Map:
 						print('g',end='')
 					else:
 						print('G',end='')
-			elif tile.requirement == "hill":
-				#need another print statement checking if you have climbing gear (or there is key/gear on tile)
+
+			elif tile.requirement == "hill": #Decision for Hill tiles
 				if character.gear[0] != None: 
 					if tile.requirementLoot == "Gate Key" and character.gear[1] == None:
 						print('K',end='')
 					else:
 						print('-',end='')
 				else:
-						if tile.requirementLoot == "Gate Key" and tile.requirementLoot == "Climbing Gear":
-							print('h',end='')
-						else:
-							print('H',end='')
-			elif tile.requirementLoot == "Gate Key" and character.gear[1] == None:
+					if tile.requirementLoot == "Gate Key" and tile.requirementLoot == "Climbing Gear":
+						print('h',end='')
+					else:
+						print('H',end='')
+
+			elif tile.requirementLoot == "Gate Key" and character.gear[1] == None: #Tile if Gate Key on tile
 				print('K',end='')
-			elif tile.requirementLoot == "Climbing Gear" and character.gear[0] == None:
+
+			elif tile.requirementLoot == "Climbing Gear" and character.gear[0] == None: #Tile if Climbing Gear on tile
 				print('C',end='')
-			else:
+
+			else: #DEFAULT TILE
 				print('-',end='')
-			print(" ",end='')
+
+			print(" ",end='') #new line if at edge
 			if (index+1)%width==0:
 				print("")
+
+		#Print Legend
 		print("\n? = character, B = boss (lowercase if hill/gate exists on tile), K = gate key, C = climbing gear\nH = hill (lowercase if key/gear exists on tile), G = gate (lowercase if key/gear exists on tile)")
 
 	def __repr__ (self):
+		'''print(Map) prints returned string.'''
 		rep = ""
 		for x in range(self.width * self.length):
 			rep += str(self.map[x])
 		return rep
 			
-class Tile:
+class Tile: #Done And Commented
 	'''A class that contains variables which makeup each tile.
 
-	Arguments: user, is a boolean that denotes whether the user will create the tile or if it will be randomly generated.
+	Self Variables: user, idx, label, mob, speed, requirement, requirementLoot, weaponLoot.
+	user, is a boolean that denotes whether the user will create the tile or if it will be randomly generated.
 	label, which will be one of three possible strings that outline the border of the map, start and end points.
 	mob, an integer which denotes monsters are present on the tile specifically the int being the monsters health points.
 	speed, an integer which denotes the speed or experience points given by a tile.
 	requirement, a string that requires gear to be able to move to that tile.
-	
-	Self Variables: user, idx, label, mob, speed, requirement.
+	requirementLoot, a string that is the gear requiered to move through other tiles.
+	weaponLoot, a tuple: string, integer that is a weapons name and damage.
 
-	Methods: make_tile(), user_make_tile().'''
+	Methods: __init__(), userMakeTile(),  makeTile(), __repr__().'''
+
 	def __init__(self, user, idx, label, mob = None, speed = None, requirement = None, requirementLoot = None, weaponLoot = None):
-		if user is True:
+		'''A function that calls functions to initialize all self variables whether it is user or computer generated.'''
+
+		if user:
 			self.userMakeTile(idx, label)
 		else:
 			self.makeTile(idx, label, mob, speed, requirement, requirementLoot, weaponLoot)
 
 	def userMakeTile(self, idx, label):
+		'''A function that initializes all the classes variables generated by the users input.'''
+
 		self.label = label
 		self.idx = idx
 
@@ -133,16 +158,23 @@ class Tile:
 		
 		demand = "Input requirement to travel accross this tile (hill/gate/plains if no requirement):"
 		iterable = ["hill", "gate", "plains"]
+		err = "Your answer was incorectly formated, try again."
 		self.requirement = getInput(demand, err, 0, iterable)
 
-		demand = "Input gear to travel accross tiles that have requirements (Climbing Gear/Gate Key):"
-		iterable = ["Climbing Gear","Gate Key"]
-		self.requirementLoot = getInput(demand, err, 0, iterable)
+		demand = "Input gear to travel accross tiles that have requirements (Climbing Gear/Gate Key/ None if no gear):"
+		iterable = ["Climbing Gear","Gate Key", "None"]
+		val = getInput(demand, err, 0, iterable)
+		if val == "None":
+			self.requirementLoot = None
+		else:
+			self.requirementLoot = val
 
 		demand = "Input a weapon name then the damage it does seperated by a space (Sword 14), that damage being a positive integer"
 		self.weaponLoot = getInput(demand, err, 4)
 
 	def makeTile(self, idx, label, mob, speed, requirement, requirementLoot, weaponLoot):
+		'''A function that initializes all the classes variables that have been computer generated.'''
+
 		self.label = label
 		self.idx = idx
 		self.mob = mob
@@ -152,18 +184,28 @@ class Tile:
 		self.weaponLoot = weaponLoot
 
 	def __repr__ (self):
+		'''print(Tile) prints returned string.'''
+
 		return "|" + str(self.label) + ", idx: " + str(self.idx) + ", req: " + str(self.requirement) +"|"
 
-class Character:
-	'''A class that contains variables which makeup each tile.
-
-	Arguments: start, to initialize the staring tile.
+class Character: #Done And Commented
+	'''A class that contains variables which make the character.
 	
 	Self Variables: weaponName, weaponAtk, level, charAtk, exp, lvlUpExp, gear, tileOn.
+	weaponName, an unused arbitrary string for the weapons name.
+	weaponAtk, an integer that is the weapons damage.
+	level, an integer which is a measuremen of "speed" or "distance".
+	charAtk, the characters damage increased by the characters level.
+	exp, an integer which is a measuremen of "speed" or "distance".
+	lvlUpExp, and integer that when exp is equivalent the characters level is increased.
+	gear, a tuple that contains the gear aquired by the character.
+	tileOn, the tile the character is on.
 
-	Methods: updateChar().'''
+	Methods: __init__(), updateChar().'''
 
 	def __init__(self, gameMap):
+		'''A function that initializes all self variables.'''
+
 		self.weaponName = None
 		self.weaponAtk = 0
 		self.level = 1
@@ -174,6 +216,8 @@ class Character:
 		self.tileOn = gameMap.map[gameMap.start]
 
 	def updateChar(self, gainedExp, weapon, gear):
+		'''A function that updates all self values after each tile movement is made.'''
+
 		self.exp += gainedExp
 		while self.exp >= self.lvlUpExp:
 			self.exp -= self.lvlUpExp
@@ -195,17 +239,23 @@ class Character:
 				return gear, weapon[0], weapon[1]
 		return None, None, None
 
-class Gen:
+class Gen: #Done And Commented
 	''' A class that uses random to generate all kinds of variables
 
 	Self Variables: None
 
-	Methods: getPoint(), getLabel(), getMob(), getSpeed(), getRequirement(), getLoot(), getRequirementLoot(), getReqAsLoot()'''
+	Methods: getPoint(), getLabel(), getMob(), getSpeed(), getRequirement(), getWeaponLoot(), 
+	getWeapAsLoot(), getRequirementLoot(), getReqAsLoot()'''
 
 	def getPoint(length, width):
+		'''A function that picks a random number within the limits of the maps size.'''
+
 		return random.randrange(0, (length * width))
 
 	def getLabel(start, end, length, width):
+		'''A function that makes a list of strings that indicate the following: the tile is the starting tile, 
+		end tile, a tile on the edge, or the tile is in the middle of the board.'''
+
 		label = []
 		for x in range(length*width):
 			if x == start:
@@ -223,6 +273,8 @@ class Gen:
 		return label
 
 	def getMob(length, width):
+		'''A function that makes a list of integer that indicate whether the tile has a monster or not and its hit points.'''
+
 		mob = []
 		for x in range(length*width):
 			if random.randrange(5) <= 3:
@@ -233,6 +285,8 @@ class Gen:
 		return mob
 
 	def getSpeed(length, width):
+		'''A function that makes a list of integers that are a measurement of the tiles "speed" or "distance" to cross it.'''
+
 		speed = []
 		for x in range(length*width):
 			rnum = random.randrange(5)
@@ -246,6 +300,8 @@ class Gen:
 		return speed
 
 	def getRequirement(length, width):
+		'''A function that makes a list of strings that indicate whether the tile has specific requirements or not.'''
+
 		requirement = []
 		for x in range(length*width):
 			rnum = random.randrange(40)
@@ -259,6 +315,9 @@ class Gen:
 		return requirement
 
 	def getWeaponLoot(mob):
+		'''A function that makes a list of tuples: (string, integer) representing a weapon for each tile,
+		the string being the weapons names and the integer being the weapons damage.'''
+
 		weaponLoot = []
 		for mobHp in mob:
 			if random.randrange(2) == 1 and mobHp != 0 and mobHp <= 999:
@@ -271,6 +330,8 @@ class Gen:
 		return weaponLoot
 
 	def getWeapAsLoot(character):
+		'''A function that checks if the tile the character is on has a weapon.'''
+
 		if character.tileOn.weaponLoot != None:
 			loot = character.tileOn.weaponLoot
 			return loot
@@ -278,6 +339,8 @@ class Gen:
 			return None
 
 	def getRequirementLoot(length,width):
+		'''A function that makes a list of strings that is the gear for that tile.'''
+
 		requirementLoot = []
 		for x in range(length*width):
 			rnum = random.randrange(40)
@@ -291,6 +354,8 @@ class Gen:
 		return requirementLoot
 
 	def getReqAsLoot(character):
+		'''A function that checks if the tile the character is on has any gear.'''
+
 		if character.tileOn.requirementLoot != None:
 			loot = character.tileOn.requirementLoot
 			return loot
@@ -397,43 +462,68 @@ class Movement:
 		
 		return tileTo
 
-def getInput(demand, err, specialCase, iterable = None):
+def getInput(demand, err, specialCase, iterable = None, numTiles = None):
 	print(demand, end = " ")
 	if iterable != None:
 		inp0 = input()
 		while inp0 not in iterable:
 			print(err)
 			print(demand, end = " ")
+			inp0 = input()
 		return inp0
 
 	else:
 		if specialCase == 1:
-			inp0, inp1 = [int(i) for i in input().split()]
-			while (inp0 * inp1) <= 1:
-				print(err)
-				print(demand, end = " ")
-			return inp0, inp1
+			while True:
+				try:
+					inp0, inp1 = [int(i) for i in input().split()]
+					if (inp0 * inp1) <= 1:
+						print(err)
+						print(demand, end = " ")
+					else:
+						return inp0, inp1
+				except:
+					print(err)
+					print(demand, end = " ")
 
 		elif specialCase == 2:
-			inp0, inp1 = [int(i) for i in input().split()]
-			while inp0 != inp1:
-				print(err)
-				print(demand, end = " ")
-			return inp0, inp1
+			while True:
+				try:
+					inp0, inp1 = [int(i) for i in input().split()]
+					if (inp0 == inp1) and (inp0 not in range(0,(numTiles)-1)) and (inp1 is in range(0,(numTiles)-1)):
+						print(err)
+						print(demand, end = " ")
+					else:
+						return inp0, inp1
+				except:
+					print(err)
+					print(demand, end = " ")
 
 		elif specialCase == 3:
-			inp0 input()
-			while inp0 < 0:
-				print(err)
-				print(demand, end = " ")
-			return inp0
+			while True:
+				try:
+					inp0 = int(input())
+					if inp0 < 0:
+						print(err)
+						print(demand, end = " ")
+					else:
+						return inp0
+				except:
+					print(err)
+					print(demand, end = " ")
 
 		elif specialCase == 4:
-			inp0, inp1 = input().split()
-			while int(inp1) < 0:
-				print(err)
-				print(demand, end = " ")
-			return inp0, int(inp1)
+			while True:
+				try:
+					inp0, inp1 = input().split()
+					if int(inp1) < 0:
+						print(err)
+						print(demand, end = " ")
+					else:
+						return inp0, int(inp1)
+				except:
+					print(err)
+					print(demand, end = " ")
 
 def play(character, gameMap):
 	turns = (gameMap.length * gameMap.width)
@@ -461,7 +551,7 @@ def play(character, gameMap):
 				print("You are blocked by a", tileTo.requirement)
 				print("Instead you wander around the same area you are in.")
 				update = Movement.goToTile(character, tileTo)
-		elif tileTo == gameMap.map[gameMap.end]:
+		elif tileTo == gameMap.map[gameMap.end] and moveBools[0]:
 			print("You move to the end game area")
 			character.tileOn = tileTo
 			break

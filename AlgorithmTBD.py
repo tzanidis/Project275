@@ -355,8 +355,12 @@ class Utilities():
 			#Finally after all the decision-making, call recursive function
 			result = curr_xp + Utilities.recurse(self, gameMap, character, moving_direction)
 			if result >= float('inf'):
-				#NOTE TODO:!!!!Use other direction:
+				#If recommended direction doesn't wor, try other direction
 				character = copy.deepcopy(oldCharacter)
+				if moving_direction == directions[0]:
+					moving_direction = directions[1]
+				else:
+					moving_direction = directions[0]
 				result = curr_xp + Utilities.recurse(self, gameMap, character, moving_direction)
 			else:
 				return result
@@ -381,9 +385,11 @@ class Utilities():
 				allDirections.remove(direction)
 			#For cases where dead end is not found on initial tile, remove direction whereas user came from.
 			if lastDir != "stay":
-				allDirections.remove(Utilities.opposite_direction(lastDir))
+				if Utilities.opposite_direction(lastDir) in allDirections:
+					allDirections.remove(Utilities.opposite_direction(lastDir))
 			#Now with all directions not tried yet, try them.
 			for direction in allDirections:
+				#NOTE!!:ALSDKJ!! Remember to check for requirements
 				if Game.Movement.getTileInDir(gameMap,oldCharacter,direction) != None:
 					character = copy.deepcopy(oldCharacter)
 					character.tileOn = Game.Movement.getTileInDir(gameMap, character, direction)

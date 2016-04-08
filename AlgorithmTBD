@@ -61,7 +61,7 @@ class Utilities():
 	def tile_xp(character, tile):
 		return tile.speed + math.ceil(tile.mob/(character.charAtk+character.weaponAtk))
 	
-	def priorities(gameMap, character)
+	def priorities(gameMap, character):
 		'''
 		Finds requirement of boss, then requirement of tiles beside it.
 		Ignore tile side that character is unlikely to step on.
@@ -280,7 +280,7 @@ class Utilities():
 				character.gear[0] = "Climbing Gear"
 				global_character = copy.deepcopy(character)
 				return curr_xp
-			elif character.gear[1] == None and character.tileOn.requirementLoot == "Gate Key"
+			elif character.gear[1] == None and character.tileOn.requirementLoot == "Gate Key":
 				global_restart = True
 				character.gear[0] = "Gate Key"
 				global_character = copy.deepcopy(character)
@@ -387,13 +387,13 @@ class Utilities():
 				return result
 		#Call recurse, and return
 		while True:
-		if global_finished = True:
-			return result
-		elif global_restart == True:
-			#Restart recursive function with new character
-			global_restart = False
-			global_character_new = copy.deepcopy(global_character)
-			result += recurse(gameMap, global_character_new, "stay")
-		else:
-			print("Algorithm failed to find path, game is unwinnable?")
-			return None
+			if global_finished == True:
+				return result
+			elif global_restart == True:
+				#Restart recursive function with new character
+				global_restart = False
+				global_character_new = copy.deepcopy(global_character)
+				result += recurse(gameMap, global_character_new, "stay")
+			else:
+				print("Algorithm failed to find path, game is unwinnable?")
+				return None

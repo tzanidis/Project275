@@ -11,6 +11,7 @@ class Utilities():
 		self.global_restart = True #Start as True to initialize recursive function
 		self.global_character = Game.Character(gameMap)
 		self.global_priority = Utilities.priorities(gameMap,self.global_character)
+		self.global_searched_tiles = set()
 		#As soon as boss is defeatable with sub-optimal path, make global_finished = True
 		#If a requirement loot is found, make global_restart = True
 		#Before running algorithm, prioritize gear needed to beat boss.
@@ -25,8 +26,9 @@ class Utilities():
 			if self.global_finished == True:
 				return None
 			elif self.global_restart == True:
-				#Restart recursive function with new character
+				#Restart recursive function with new character and refresh searched tiles
 				self.global_restart = False
+				self.global_searched_tiles = set()
 				global_character_new = copy.deepcopy(self.global_character)
 				self.global_result += Utilities.recurse(self, gameMap, global_character_new, "stay")
 			else:
@@ -262,13 +264,13 @@ class Utilities():
 			(Game.Movement.getTileInDir(gameMap, currChar, "left"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
 			(Game.Movement.getTileInDir(gameMap, currChar, "right"),currChar,current_xp,accessedTile[3]+[currChar.tileOn])]
 			print("No weapon found, don't kill yourself tho")
-			return None
-		
+			return current_xp
 	def recurse(self, gameMap, character, lastDir):
 		'''
 		Recursive function that recursively paths itself toward the exit.
 		Follows ideas stated in the explanation of minXP()
 		'''
+		#~ print("I'm recursing: "+str(lastDir)+" and on "+str(character.tileOn))
 		#Base Case: If solution already found, return an infinite number
 		if self.global_finished or self.global_restart:
 			return float('inf')
@@ -277,22 +279,32 @@ class Utilities():
 			self.global_finished = True
 			boss = 1000
 			return math.ceil(boss/(character.charAtk+character.weaponAtk))
-		#If intializing recursive function, don't calculate tileXP. Otherwise, get tileXP and weapon if available.
+		#Base Case: Tile is already searched
+		if character.tileOn in self.global_searched_tiles:
+			return float('inf')
+		#Calculate tileXP. (Ignore if it's the first tile)
 		if lastDir != "stay":
 			curr_xp = Utilities.tile_xp(character, character.tileOn)
 			dump = character.updateChar(curr_xp, character.tileOn.weaponLoot, None)
 		else:
 			curr_xp = 0
-		#Base Case: Item found on current tile that character doesn't have, restart recursive call.
+		#Add tile to 'searched'
+		self.global_searched_tiles.add(character.tileOn)
+		#Base Case: Item found on current tile that character doesn't have, 
+		#restart recursive call and remove gear as a priority.
 		if character.gear[0] == None and character.tileOn.requirementLoot == "Climbing Gear":
 			#NOTE: Becareful of finalRequirements algorithm
 			self.global_restart = True
 			character.gear[0] = "Climbing Gear"
+			if "Climbing Gear" in self.global_priority:
+				self.global_priority.remove("Climbing Gear")
 			self.global_character = copy.deepcopy(character)
 			return curr_xp
 		elif character.gear[1] == None and character.tileOn.requirementLoot == "Gate Key":
 			self.global_restart = True
-			character.gear[0] = "Gate Key"
+			character.gear[1] = "Gate Key"
+			if "Gate Key" in self.global_priority:
+				self.global_priority.remove("Gate Key")
 			self.global_character = copy.deepcopy(character)
 			return curr_xp
 		#Base Case: Is beside final boss tile, run last requirements.
@@ -302,6 +314,7 @@ class Utilities():
 			character.tileOn = Game.Movement.getTileInDir(gameMap, character, directions[0])
 			return curr_xp + Utilities.recurse(self, gameMap, character, directions[0]) #+Utilities.final_requirements(gameMap, character) omitted for testing purposes
 		
+		#Recursive Case: Move to next possible tile
 		directions = Utilities.boss_direction(gameMap, character.tileOn.idx)
 		old_directions = Utilities.boss_direction(gameMap, character.tileOn.idx) #Used incase after analysis, len(directions) == 0
 		currTile = character.tileOn
@@ -326,14 +339,29 @@ class Utilities():
 			#However, if one of them has a key, prioritize key. (Include climbing gear)
 			tile1 = Game.Movement.getTileInDir(gameMap, character, directions[0])
 			tile2 = Game.Movement.getTileInDir(gameMap, character, directions[1])
-			#Compare XPs, if equal take the vertical value.
+			#Compare XPs. If equal, move in arbitrary direction.
 			if Utilities.tile_xp(character, tile1) > Utilities.tile_xp(character, tile2):
 				character.tileOn = tile2
 				moving_direction = directions[1]
 			else: #tile_xp(character, tile1) <= tile_xp(character, tile2)
 				character.tileOn = tile1
 				moving_direction = directions[0]
-			#Check for priorities (lost inventory items).
+			#Check for weapon priorities (only if character has no weapon).
+			if character.weaponAtk == 0:
+				#Check if tiles have weapon
+				if tile1.weaponLoot != (None,None):
+					#Check if tile 2 has a weapon, and if its better
+					if tile2.weaponLoot != (None, None) and tile2.weaponLoot[1] > tile1.weaponLoot[1]:
+						character.tileOn = tile2
+						moving_direction = directions[1]
+					else:
+						character.tileOn = tile1
+						moving_direction = directions[0]
+				elif tile2.weaponLoot != (None,None):
+					character.tileOn = tile2
+					moving_direction = directions[1]
+			#Check for priorities (gear to pass gates/hills).
+			#Prioritize items the most!
 			if len(self.global_priority) > 0:
 				for priority in self.global_priority:
 					#If tile1 contains priority loot, go to tile1
@@ -346,21 +374,18 @@ class Utilities():
 						break
 					#If tile2 contains priority loot, go to tile2
 					elif priority == tile2.requirementLoot:
-						if tile1.requirementLoot == tile2.requirementLoot:
-							#If tiles have the same loot, ignore priority
-							break
 						character.tileOn = tile2
 						moving_direction = directions[1]
 						break
 			#Finally after all the decision-making, call recursive function
 			result = curr_xp + Utilities.recurse(self, gameMap, character, moving_direction)
 			if result >= float('inf'):
-				#If recommended direction doesn't wor, try other direction
+				#If recommended direction doesn't work, use other direction
 				character = copy.deepcopy(oldCharacter)
 				if moving_direction == directions[0]:
 					moving_direction = directions[1]
 				else:
-					moving_direction = directions[0]
+					moving_direction = direction[0]
 				result = curr_xp + Utilities.recurse(self, gameMap, character, moving_direction)
 			else:
 				return result
@@ -389,7 +414,6 @@ class Utilities():
 					allDirections.remove(Utilities.opposite_direction(lastDir))
 			#Now with all directions not tried yet, try them.
 			for direction in allDirections:
-				#NOTE!!:ALSDKJ!! Remember to check for requirements
 				if Game.Movement.getTileInDir(gameMap,oldCharacter,direction) != None:
 					character = copy.deepcopy(oldCharacter)
 					character.tileOn = Game.Movement.getTileInDir(gameMap, character, direction)

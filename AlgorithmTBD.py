@@ -21,6 +21,7 @@ class Utilities():
 		##Important algorithm note: Since it's possible to infinitely loop in a path, may want to include
 		##set of already accessed tiles.
 		#Call recurse, and return
+		#~ gameMap.drawMap(self.global_character,gameMap.length,gameMap.width)
 		self.global_result = 0
 		while True:
 			if self.global_finished == True:
@@ -149,15 +150,14 @@ class Utilities():
 		
 		Returns totalXP gained from adventures.
 		'''
-		findingRequirements = True
 		path = list()
 		current_xp = 0
 		endTile = gameMap.map[gameMap.end]
 		if endTile.requirement != "plains":
 			#Check if already have requirements
-			if endTile.requirement == "hills" and gear[0] != None:
+			if endTile.requirement == "hill" and character.gear[0] == "Climbing Gear":
 				pass
-			elif endTile.requirement == "gate" and gear[1] != None:
+			elif endTile.requirement == "gate" and character.gear[1] == "Gate Key":
 				pass
 			else:
 				while True:
@@ -165,7 +165,7 @@ class Utilities():
 					results = Utilities.search_for_req(gameMap, character,"obstacles")
 					current_xp += results[0]
 					character = results[2]
-					if endTile.requirement == "hills" and results[1] == "Climbing Gear":
+					if endTile.requirement == "hill" and results[1] == "Climbing Gear":
 						break
 					elif endTile.requirement == "gate" and results[1] == "Gate Key":
 						break
@@ -186,6 +186,7 @@ class Utilities():
 		Recursive function that searches all tiles, keeps all tiles searched in a set so search does not search a tile twice.
 		Assigns a value to each tile based on the XP needed to get there.
 		'''
+		#~ print("Searching for requirements: "+requirement)
 		if requirement == "obstacles":
 			#accessibleTile is a tuple that stores tile, character, current xp, and tile path
 			accessibleTiles = [(Game.Movement.getTileInDir(gameMap, character, "up"),character,0,[character.tileOn]),
@@ -197,9 +198,11 @@ class Utilities():
 			while accessibleTiles:
 				accessedTile = accessibleTiles.pop(0)
 				currChar = copy.deepcopy(accessedTile[1])
+				currChar.tileOn = accessedTile[0]
 				#Base Case: If tile already searched, skip
 				if accessedTile[0] in searchedTiles:
 					continue
+				searchedTiles.add(accessedTile[0])
 				#Base Case: Can't go on boss tile or None tile
 				if accessedTile[0] == None or accessedTile[0] == gameMap.map[gameMap.end]:
 					continue
@@ -208,19 +211,25 @@ class Utilities():
 					continue
 				if accessedTile[0].requirement == "gate" and currChar.gear[1] == None:
 					continue
-				searchedTiles.add(accessedTile[0])
 				tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
 				current_xp = tileXP + accessedTile[2]
-				totalGet = currChar.updateChar(tileXP,accessedTile[0].weapon,accessedTile[0].gear)
-				if totalGet[0] != None:
-					#Gear found, return
-					totalTileXP = 0
-					while accessedTile[3]:
-						previousTile = accessedTile[3].pop()
-						tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
-						currChar.updateChar(tileXP,(None, None),None)
-						totalTileXP += tileXP
-					return (current_xp + totalTileXP, totalGet[0],currChar)
+				totalGet = currChar.updateChar(tileXP,accessedTile[0].weaponLoot,None)
+				if accessedTile[0].requirementLoot != None:
+					#Make sure character does not already have gear.
+					if (accessedTile[0].requirementLoot == "Climbing Gear") and (currChar.gear[0] == "Climbing Gear"):
+						pass
+					elif (accessedTile[0].requirementLoot == "Gate Key") and (currChar.gear[1] == "Gate Key"):
+						pass
+					else:
+						#New gear found, calculate XP needed to return to end tile
+						totalTileXP = 0
+						while accessedTile[3]:
+							previousTile = accessedTile[3].pop()
+							tileXP = previousTile.speed + math.ceil(previousTile.mob/(currChar.charAtk+currChar.weaponAtk))
+							currChar.updateChar(tileXP,(None, None),None)
+							totalTileXP += tileXP
+						currChar.updateChar(0,(None, None), accessedTile[0].requirementLoot)
+						return (current_xp + totalTileXP, currChar.tileOn.requirementLoot,currChar)
 				#If no gear found, add neighbours to accessibletiles
 				accessibleTiles += [(Game.Movement.getTileInDir(gameMap, currChar, "up"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
 			(Game.Movement.getTileInDir(gameMap, currChar, "down"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
@@ -238,23 +247,29 @@ class Utilities():
 			current_xp = 0
 			while accessibleTiles:
 				accessedTile = accessibleTiles.pop(0)
+				currChar = copy.deepcopy(accessedTile[1])
+				currChar.tileOn = accessedTile[0]
 				#Base Case: If tile already searched, skip
 				if accessedTile[0] in searchedTiles:
 					continue
+				searchedTiles.add(accessedTile[0])
 				#Base Case: Can't go on boss tile or None tile
 				if accessedTile[0] == None or accessedTile[0] == gameMap.map[gameMap.end]:
 					continue
-				searchedTiles.add(accessedTile[0])
-				currChar = copy.deepcopy(accessedTile[1])
+				#Base Case: Can't go through tile where gear is required and character does not have
+				if accessedTile[0].requirement == "hill" and currChar.gear[0] == None:
+					continue
+				if accessedTile[0].requirement == "gate" and currChar.gear[1] == None:
+					continue
 				tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
 				current_xp = tileXP + accessedTile[2]
-				totalGet = currChar.updateChar(tileXP,accessedTile[0].weapon,accessedTile[0].gear)
-				if accessedTile.weaponLoot != (None,None):
-					#Gear found, return
+				totalGet = currChar.updateChar(tileXP,accessedTile[0].weaponLoot,accessedTile[0].requirementLoot)
+				if accessedTile[0].weaponLoot != (None,None):
+					#Gear found, calculate XP needed to return to end tile
 					totalTileXP = 0
 					while accessedTile[3]:
 						previousTile = accessedTile[3].pop()
-						tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
+						tileXP = previousTile.speed + math.ceil(previousTile.mob/(currChar.charAtk+currChar.weaponAtk))
 						currChar.updateChar(tileXP,(None, None),None)
 						totalTileXP += tileXP
 					return (current_xp + totalTileXP,currChar)
@@ -263,8 +278,8 @@ class Utilities():
 			(Game.Movement.getTileInDir(gameMap, currChar, "down"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
 			(Game.Movement.getTileInDir(gameMap, currChar, "left"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
 			(Game.Movement.getTileInDir(gameMap, currChar, "right"),currChar,current_xp,accessedTile[3]+[currChar.tileOn])]
-			print("No weapon found, don't kill yourself tho")
-			return current_xp
+			print("No weapon found, fight the boss anyway")
+			return None
 	def recurse(self, gameMap, character, lastDir):
 		'''
 		Recursive function that recursively paths itself toward the exit.
@@ -312,7 +327,8 @@ class Utilities():
 			#Guranteed to fight boss, just use a return.
 			directions = Utilities.boss_direction(gameMap, character.tileOn.idx)
 			character.tileOn = Game.Movement.getTileInDir(gameMap, character, directions[0])
-			return curr_xp + Utilities.recurse(self, gameMap, character, directions[0]) #+Utilities.final_requirements(gameMap, character) omitted for testing purposes
+			
+			return Utilities.final_requirements(gameMap, character) + curr_xp + Utilities.recurse(self, gameMap, character, directions[0]) 
 		
 		#Recursive Case: Move to next possible tile
 		directions = Utilities.boss_direction(gameMap, character.tileOn.idx)
@@ -450,7 +466,7 @@ class Winnable():
 				if "Gate Key" not in acquiredRequirements:
 					specSearch.add(tileTerm)
 					continue
-			if tileTerm.requirement == "hills": #Check if requirements contain gear
+			if tileTerm.requirement == "hill": #Check if requirements contain gear
 				if "Climbing Gear" not in acquiredRequirements:
 					specSearch.add(tileTerm)
 					continue
@@ -466,7 +482,7 @@ class Winnable():
 								searchTiles.add(term)
 					elif tileTerm.requirementLoot == "Climbing Gear":
 						for term in specSearch:
-							if term.requirement == "hills":
+							if term.requirement == "hill":
 								searchTiles.add(term)
 
 			if tileTerm.label == "end": #if tile is end, game is winnable

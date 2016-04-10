@@ -113,7 +113,7 @@ class Map: #Done And Commented
 				print("")
 
 		#Print Legend
-		print("\n? = character, B = boss (lowercase if hill/gate exists on tile), K = gate key, C = climbing gear\nH = hill (lowercase if key/gear exists on tile), G = gate (lowercase if key/gear exists on tile)")
+		print("\n@ = character, B = boss (lowercase if hill/gate exists on tile), K = gate key, C = climbing gear\nH = hill (lowercase if key/gear exists on tile), G = gate (lowercase if key/gear exists on tile)")
 
 	def __repr__ (self):
 		'''print(Map) prints returned string.'''

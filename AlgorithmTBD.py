@@ -625,14 +625,17 @@ class Winnable():
 					break
 
 		pathsFoundExpToMin = [i[0] for i in pathsFoundExp]
-		minIdx = pathsFoundExpToMin.index(min(pathsFoundExpToMin))
-		print("min exp path index:", minIdx)
-		print("min exp", pathsFoundExp[minIdx][0][0]) #THIS IS THE (LVL, EXP)
-		print("min path", pathsFoundExp[minIdx][1], end="\n\n") #THIS IS THE [PATH]
-		print("Path taken by AI, not including any stays.")
-		Winnable.drawPath(pathsFoundExp[minIdx][1], gameMap)
-		print()
-		return pathsFoundExp[minIdx][0][0]
+		if pathsFoundExpToMin:
+			minIdx = pathsFoundExpToMin.index(min(pathsFoundExpToMin))
+			print("min exp path index:", minIdx)
+			print("min exp", pathsFoundExp[minIdx][0][0]) #THIS IS THE (LVL, EXP)
+			print("min path", pathsFoundExp[minIdx][1], end="\n\n") #THIS IS THE [PATH]
+			print("Path taken by AI, not including any stays.")
+			Winnable.drawPath(pathsFoundExp[minIdx][1], gameMap)
+			print()
+			return pathsFoundExp[minIdx][0][0]
+		else:
+			return False, 0
 
 	def minExpBrute(gameMap, turns):
 		'''A function that finds ALL possible paths to the end.'''

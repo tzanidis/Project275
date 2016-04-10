@@ -339,6 +339,10 @@ class Utilities():
 		Once path is found, all recursive calls return an integer that is collected into global_result
 		in the main function.
 		Comments below outline how the algorithm functions (Warning: Alot of comments).
+		Basic Outline: Imagine the maze as a minimum spanning tree. Now instead of immediately creating
+		the tree, create the tree as the character moves towards the boss tile. (Creating the tree
+		immediately creates a worse algorithm, since the edge weights increase/decrease as the
+		character levels up or obtains a weapon.)
 		
 		Running time analysis: For one recursive call, is constant running time assuming all operations/functions
 		run in constant running time.
@@ -478,7 +482,7 @@ class Utilities():
 		elif len(directions) == 0:
 			result = float('inf')
 		else:
-			print("Unknown case! Terminate!")
+			raise ValueError("Unknown case! Terminate!")
 		#Check if results result in a dead end
 		if result >= float('inf'):
 			#Attempt to use directions never tried before. If no directions work, return infinite.

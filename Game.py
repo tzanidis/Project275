@@ -616,6 +616,8 @@ def main(gameMap = None): #Done And Commented
 			win_exp = Algorithm.howWinnable(gameMap)
 			while win_exp[0] is False:
 				gameMap = Map(True, width, length)
+				win_exp = Algorithm.howWinnable(gameMap)
+
 			
 		else:
 			demand = "Input map width and length as two integers seperated by a space:"
@@ -625,6 +627,8 @@ def main(gameMap = None): #Done And Commented
 			win_exp = Algorithm.howWinnable(gameMap)
 			while win_exp[0] is False:
 				gameMap = Map(False, width, length)
+				win_exp = Algorithm.howWinnable(gameMap)
+
 
 	########################################## Create Character ##############################################
 	char = Character(gameMap)

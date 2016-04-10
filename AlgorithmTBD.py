@@ -194,10 +194,10 @@ class Utilities():
 		After gear search, if character does not have weapon, find nearest tile with weapon. 
 		If weapon cannot be found in all current accessible tiles, just fight the boss.
 		
-		Returns: totalXP gained from adventure to gear/weapon.
+		Returns: A tuple containing XP needed to get gear and XP needed to get weapon.
 		'''
 		path = list()
-		current_xp = 0
+		gear_xp = 0
 		endTile = gameMap.map[gameMap.end]
 		if endTile.requirement != "plains":
 			#Check if already have requirements
@@ -209,7 +209,7 @@ class Utilities():
 				while True:
 					#Search for requirements until requirement found
 					results = Utilities.search_for_req(gameMap, character,"obstacles")
-					current_xp += results[0]
+					gear_xp += results[0]
 					character = results[2]
 					if endTile.requirement == "hill" and results[1] == "Climbing Gear":
 						break
@@ -218,13 +218,14 @@ class Utilities():
 					
 		
 		#Look for weapon if character wields no weapon
+		weapon_xp = 0
 		if character.weaponAtk < 1:
 			results = Utilities.search_for_req(gameMap, character,"weapon")
 			if results != None:
 				character = results[1]
-				current_xp += results[0]
+				weapon_xp += results[0]
 				
-		return current_xp
+		return (gear_xp,weapon_xp)
 	
 	def search_for_req(gameMap, character, requirement):
 		'''
@@ -338,6 +339,10 @@ class Utilities():
 		Once path is found, all recursive calls return an integer that is collected into global_result
 		in the main function.
 		Comments below outline how the algorithm functions (Warning: Alot of comments).
+		Basic Outline: Imagine the maze as a minimum spanning tree. Now instead of immediately creating
+		the tree, create the tree as the character moves towards the boss tile. (Creating the tree
+		immediately creates a worse algorithm, since the edge weights increase/decrease as the
+		character levels up or obtains a weapon.)
 		
 		Running time analysis: For one recursive call, is constant running time assuming all operations/functions
 		run in constant running time.
@@ -349,12 +354,6 @@ class Utilities():
 		#Base Case: If solution already found, return an infinite number
 		if self.global_finished or self.global_restart:
 			return float('inf')
-		#Base Case: If tile is end tile, fight the boss and end the algorithm.
-		if character.tileOn.idx == gameMap.end:
-			self.global_finished = True
-			boss = 1000
-			return math.ceil(boss/(character.charAtk+character.weaponAtk))
-		#Base Case: Tile is already searched
 		if character.tileOn in self.global_searched_tiles:
 			return float('inf')
 		#Calculate tileXP. (Ignore if it's the first tile)
@@ -382,19 +381,29 @@ class Utilities():
 				self.global_priority.remove("Gate Key")
 			self.global_character = copy.deepcopy(character)
 			return curr_xp
+		#Make a copy of old character
+		oldCharacter = copy.deepcopy(character)
 		#Base Case: Is beside final boss tile, run last requirements.
 		if Utilities.distance_to_boss(gameMap,character.tileOn.idx) == 1:
 			#Guranteed to fight boss, just use a return.
-			directions = Utilities.boss_direction(gameMap, character.tileOn.idx)
-			character.tileOn = Game.Movement.getTileInDir(gameMap, character, directions[0])
-			
-			return Utilities.final_requirements(gameMap, character) + curr_xp + Utilities.recurse(self, gameMap, character, directions[0]) 
+			xpResults = Utilities.final_requirements(gameMap, character)
+			#Compare XP needed to get weapon then fight boss and straight up fighting the boss
+			#Take the smaller value
+			boss = 1000
+			newXP = xpResults[1] + math.ceil(boss/(character.charAtk+character.weaponAtk))
+			oldXP = math.ceil(boss/(oldCharacter.charAtk+oldCharacter.weaponAtk))
+			if newXP < oldXP:
+				betterXP = newXP
+			else:
+				betterXP = oldXP
+			#End recursive calls, and return boss_xp
+			self.global_finished = True
+			return xpResults[0] + curr_xp + betterXP 
 		
 		#Recursive Case: Move to next possible tile
 		directions = Utilities.boss_direction(gameMap, character.tileOn.idx)
 		old_directions = Utilities.boss_direction(gameMap, character.tileOn.idx) #Used incase after analysis, len(directions) == 0
 		currTile = character.tileOn
-		oldCharacter = copy.deepcopy(character)
 		#Filters directions that are obstructed by obstacles. All filtered directions are initially toward boss.
 		#Also filters direction if direction is tile that is came from.
 		for direction in old_directions:
@@ -473,7 +482,7 @@ class Utilities():
 		elif len(directions) == 0:
 			result = float('inf')
 		else:
-			print("Unknown case! Terminate!")
+			raise ValueError("Unknown case! Terminate!")
 		#Check if results result in a dead end
 		if result >= float('inf'):
 			#Attempt to use directions never tried before. If no directions work, return infinite.
@@ -616,14 +625,17 @@ class Winnable():
 					break
 
 		pathsFoundExpToMin = [i[0] for i in pathsFoundExp]
-		minIdx = pathsFoundExpToMin.index(min(pathsFoundExpToMin))
-		print("min exp path index:", minIdx)
-		print("min exp", pathsFoundExp[minIdx][0][0]) #THIS IS THE (LVL, EXP)
-		print("min path", pathsFoundExp[minIdx][1], end="\n\n") #THIS IS THE [PATH]
-		print("Path taken by AI, not including any stays.")
-		Winnable.drawPath(pathsFoundExp[minIdx][1], gameMap)
-		print()
-		return pathsFoundExp[minIdx][0][0]
+		if pathsFoundExpToMin:
+			minIdx = pathsFoundExpToMin.index(min(pathsFoundExpToMin))
+			print("min exp path index:", minIdx)
+			print("min exp", pathsFoundExp[minIdx][0][0]) #THIS IS THE (LVL, EXP)
+			print("min path", pathsFoundExp[minIdx][1], end="\n\n") #THIS IS THE [PATH]
+			print("Path taken by AI, not including any stays.")
+			Winnable.drawPath(pathsFoundExp[minIdx][1], gameMap)
+			print()
+			return pathsFoundExp[minIdx][0][0]
+		else:
+			return False, 0
 
 	def minExpBrute(gameMap, turns):
 		'''A function that finds ALL possible paths to the end.'''

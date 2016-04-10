@@ -5,37 +5,74 @@ import sys
 from collections import deque
 
 class Utilities():
+	''' A class that determines a sub-optimal path for a map larger than 12 tiles.
+	In general, the algorithm works better for large maps with a wide gap between start and end.
+	This is due to the algorithm's assumptions in optimizing a path.
+	
+	Methods: distance_to_boss(), is_reachable(), boss_direction(), tile_xp(), priorities(), opposite_direction(),
+	final_requirements(), search_for_req(), recurse()'''
 	
 	def __init__(self,gameMap):
+		'''
+		In initialization, algorithm will be started.
+		Global variables are set during this phase before the recursive algorithm.
+		
+		Returns: A class of which the variable global_result will contain the algorithm's sub-optimal minimum XP.
+		
+		Running time analysis: Let n be the number of tiles. Take the smallest case: a 5x5 map.
+		Under the assumption that the algorithm will path around any lone obstacles, the longest path
+		would be from one corner of the map to another; a maximum of 8 tiles crossed. After crossing the 8 tiles,
+		it will search for any final requirements. In an average case, this will also be relatively small since it
+		does a breadth-first search of the area around it. Therefore, the big O running time will usually be O(log(n)).
+		In the worst case, the final requirements needed to fight the boss are on the farthest-most tile from the boss tile.
+		Additionally, the path to the boss could be cluttered with 'obstacle walls' that make the algorithm take an
+		extreme detour-like path. In this case, the big O running time is O(n). (There are constants of n, but each tile
+		is only searched once)
+		
+		Explanation for global variables:
+		-As soon as boss is defeatable with sub-optimal path, make global_finished = True
+		-If a requirement loot is found, make global_restart = True
+		-Before running algorithm, prioritize gear needed to beat boss.
+		-If boss is on top of a hill or on a gate, always try to find that 'specific' requirement first.
+		-To make sure a character is always updated to latest recursive call, use global_character.
+		-By putting in already searched tiles into global_searched_tiles, function won't revisit the same location
+		under the assumption that it's already found the most optimal path to the same tile (not always true).
+		-Clear global_searched_tiles when item is found: Incase there's another path available to boss through tiles
+		that have already been traversed.
+		'''
 		self.global_finished = False
 		self.global_restart = True #Start as True to initialize recursive function
 		self.global_character = Game.Character(gameMap)
 		self.global_priority = Utilities.priorities(gameMap,self.global_character)
-		#As soon as boss is defeatable with sub-optimal path, make global_finished = True
-		#If a requirement loot is found, make global_restart = True
-		#Before running algorithm, prioritize gear needed to beat boss.
-		#If boss is on top of a hill or on a gate, always try to find that 'specific' requirement first.
-		#To make sure a character is always updated to latest recursive call, use global_character.
-		
-		##Important algorithm note: Since it's possible to infinitely loop in a path, may want to include
-		##set of already accessed tiles.
-		#Call recurse, and return
+		self.global_searched_tiles = set()
 		self.global_result = 0
+		
+		#~ gameMap.drawMap(self.global_character,gameMap.length,gameMap.width) #For testing purposes only
+		
+		#Loop for global_restart to function.
 		while True:
 			if self.global_finished == True:
 				return None
 			elif self.global_restart == True:
-				#Restart recursive function with new character
+				#Restart recursive function with new character and refresh searched tiles
+				#If starting recursive calls, set global_restart as true to go into this case.
 				self.global_restart = False
+				self.global_searched_tiles = set()
 				global_character_new = copy.deepcopy(self.global_character)
 				self.global_result += Utilities.recurse(self, gameMap, global_character_new, "stay")
 			else:
+				#Assuming that map was tested for 'winnability', this case should not occur.
 				print("Algorithm failed to find path, game is unwinnable?")
 				return None
 	
 	def distance_to_boss(gameMap,characterTile):
 		'''
 		Explanation:
+		Given the index of character tile and boss tile, finds the distance in tiles between the character and the final boss.
+		
+		Runs in constant time, assuming that the numbers are relatively small.
+		
+		Returns: Distance between character and boss tile.
 		'''
 		#Travel vertically until on the same width
 		#Travel horizontally until reach boss
@@ -58,8 +95,9 @@ class Utilities():
 	
 	def is_reachable(gameMap,character,turns):
 		'''
-		Explanation:
-		Note: Does not account for hills or gates
+		Explanation: With given turns and not accounting for hills or gates, checks if boss is reachable in time.
+		
+		Returns: True if boss is reachable, False if not.
 		'''
 		if turns < distance_to_boss(gameMap,character):
 			return False
@@ -67,7 +105,12 @@ class Utilities():
 	
 	def boss_direction(gameMap,characterTile):
 		'''
-		Explanation: Returns a list of possible directions.
+		Explanation: Returns the boss's direction relative to the character. If boss direction is diagonal from character,
+		include two directions.
+		Runs in constant time, assuming that the numbers are small.
+		
+		Returns: A list containing directions towards the boss. 
+		If len(list) == 2, first direction in list will always be horizontal.
 		'''
 		directions = list()
 		bossTile = gameMap.end
@@ -89,12 +132,19 @@ class Utilities():
 		return directions
 	
 	def tile_xp(character, tile):
+		'''Explanation: Quick redundant calculation that calculates the XP acquired on a tile.
+		Returns: XP acquired on a tile.
+		'''
 		return tile.speed + math.ceil(tile.mob/(character.charAtk+character.weaponAtk))
 	
 	def priorities(gameMap, character):
 		'''
-		Finds requirement of boss, then requirement of tiles beside it.
+		Explanation: Finds tile requirement of boss tile, then requirement of tiles beside it.
 		Ignore tile side that character is unlikely to step on.
+		
+		Returns: List containing "Climbing Gear" and/or "Gate Key". Will omit one if character starts with
+		the gear already.
+		If len(list) == 2, the first element will be prioritized first.
 		'''
 		priorityList = list()
 		directionSet = set(["stay","up","down","left","right"])
@@ -117,7 +167,7 @@ class Utilities():
 	def opposite_direction(direction):
 		'''
 		Explanation: Given a direction as a string, returns the opposite direction.
-		Running time analysis, constant running time O(1).
+		Always constant running time.
 		'''
 		if direction == "left":
 			return "right"
@@ -136,26 +186,24 @@ class Utilities():
 	
 	def final_requirements(gameMap, character):
 		'''
-		Explanation: final_requirements() is a pathing algorithm.
-		Assuming character is on final tile, checks if they have gear
-		to go onto boss tile. If not, find nearest tile with gear and then path back to tile.
+		Explanation: Assuming character is on final tile before boss, checks if they have the gear to go onto boss tile. 
+		If not, find nearest tile with gear and then path back to tile.
 		If entire map does not have needed gear, find nearest other gear first. After obtaining that gear,
 		then search the entire map for needed gear again.
 		
-		Then, if character does not have weapon, find nearest tile with weapon. 
+		After gear search, if character does not have weapon, find nearest tile with weapon. 
 		If weapon cannot be found in all current accessible tiles, just fight the boss.
 		
-		Returns totalXP gained from adventures.
+		Returns: totalXP gained from adventure to gear/weapon.
 		'''
-		findingRequirements = True
 		path = list()
 		current_xp = 0
 		endTile = gameMap.map[gameMap.end]
 		if endTile.requirement != "plains":
 			#Check if already have requirements
-			if endTile.requirement == "hills" and gear[0] != None:
+			if endTile.requirement == "hill" and character.gear[0] == "Climbing Gear":
 				pass
-			elif endTile.requirement == "gate" and gear[1] != None:
+			elif endTile.requirement == "gate" and character.gear[1] == "Gate Key":
 				pass
 			else:
 				while True:
@@ -163,7 +211,7 @@ class Utilities():
 					results = Utilities.search_for_req(gameMap, character,"obstacles")
 					current_xp += results[0]
 					character = results[2]
-					if endTile.requirement == "hills" and results[1] == "Climbing Gear":
+					if endTile.requirement == "hill" and results[1] == "Climbing Gear":
 						break
 					elif endTile.requirement == "gate" and results[1] == "Gate Key":
 						break
@@ -180,10 +228,16 @@ class Utilities():
 	
 	def search_for_req(gameMap, character, requirement):
 		'''
-		Explanation: True search/pathfinding algorithm
-		Recursive function that searches all tiles, keeps all tiles searched in a set so search does not search a tile twice.
-		Assigns a value to each tile based on the XP needed to get there.
+		Explanation: Loop function that searches all tiles for requirements.
+		Keeps all tiles searched in a set so search does not search a tile twice.
+		Assigns a value to each tile based on the XP needed to get there; used to find XP gained when going back.
+		
+		Returns:
+		If requirement == "obstacles", returns a tuple containing totalXP gained from path to requirementLoot and back, 
+		the requirementLoot gained, and the updated character.
+		If requirement == "weapon", returns the same except without the requirementLoot gained.
 		'''
+		#~ print("Searching for requirements: "+requirement)
 		if requirement == "obstacles":
 			#accessibleTile is a tuple that stores tile, character, current xp, and tile path
 			accessibleTiles = [(Game.Movement.getTileInDir(gameMap, character, "up"),character,0,[character.tileOn]),
@@ -195,9 +249,11 @@ class Utilities():
 			while accessibleTiles:
 				accessedTile = accessibleTiles.pop(0)
 				currChar = copy.deepcopy(accessedTile[1])
+				currChar.tileOn = accessedTile[0]
 				#Base Case: If tile already searched, skip
 				if accessedTile[0] in searchedTiles:
 					continue
+				searchedTiles.add(accessedTile[0])
 				#Base Case: Can't go on boss tile or None tile
 				if accessedTile[0] == None or accessedTile[0] == gameMap.map[gameMap.end]:
 					continue
@@ -206,19 +262,25 @@ class Utilities():
 					continue
 				if accessedTile[0].requirement == "gate" and currChar.gear[1] == None:
 					continue
-				searchedTiles.add(accessedTile[0])
 				tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
 				current_xp = tileXP + accessedTile[2]
-				totalGet = currChar.updateChar(tileXP,accessedTile[0].weapon,accessedTile[0].gear)
-				if totalGet[0] != None:
-					#Gear found, return
-					totalTileXP = 0
-					while accessedTile[3]:
-						previousTile = accessedTile[3].pop()
-						tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
-						currChar.updateChar(tileXP,(None, None),None)
-						totalTileXP += tileXP
-					return (current_xp + totalTileXP, totalGet[0],currChar)
+				totalGet = currChar.updateChar(tileXP,accessedTile[0].weaponLoot,None)
+				if accessedTile[0].requirementLoot != None:
+					#Make sure character does not already have gear.
+					if (accessedTile[0].requirementLoot == "Climbing Gear") and (currChar.gear[0] == "Climbing Gear"):
+						pass
+					elif (accessedTile[0].requirementLoot == "Gate Key") and (currChar.gear[1] == "Gate Key"):
+						pass
+					else:
+						#New gear found, calculate XP needed to return to end tile
+						totalTileXP = 0
+						while accessedTile[3]:
+							previousTile = accessedTile[3].pop()
+							tileXP = previousTile.speed + math.ceil(previousTile.mob/(currChar.charAtk+currChar.weaponAtk))
+							currChar.updateChar(tileXP,(None, None),None)
+							totalTileXP += tileXP
+						currChar.updateChar(0,(None, None), accessedTile[0].requirementLoot)
+						return (current_xp + totalTileXP, currChar.tileOn.requirementLoot,currChar)
 				#If no gear found, add neighbours to accessibletiles
 				accessibleTiles += [(Game.Movement.getTileInDir(gameMap, currChar, "up"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
 			(Game.Movement.getTileInDir(gameMap, currChar, "down"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
@@ -236,23 +298,29 @@ class Utilities():
 			current_xp = 0
 			while accessibleTiles:
 				accessedTile = accessibleTiles.pop(0)
+				currChar = copy.deepcopy(accessedTile[1])
+				currChar.tileOn = accessedTile[0]
 				#Base Case: If tile already searched, skip
 				if accessedTile[0] in searchedTiles:
 					continue
+				searchedTiles.add(accessedTile[0])
 				#Base Case: Can't go on boss tile or None tile
 				if accessedTile[0] == None or accessedTile[0] == gameMap.map[gameMap.end]:
 					continue
-				searchedTiles.add(accessedTile[0])
-				currChar = copy.deepcopy(accessedTile[1])
+				#Base Case: Can't go through tile where gear is required and character does not have
+				if accessedTile[0].requirement == "hill" and currChar.gear[0] == None:
+					continue
+				if accessedTile[0].requirement == "gate" and currChar.gear[1] == None:
+					continue
 				tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
 				current_xp = tileXP + accessedTile[2]
-				totalGet = currChar.updateChar(tileXP,accessedTile[0].weapon,accessedTile[0].gear)
-				if accessedTile.weaponLoot != (None,None):
-					#Gear found, return
+				totalGet = currChar.updateChar(tileXP,accessedTile[0].weaponLoot,accessedTile[0].requirementLoot)
+				if accessedTile[0].weaponLoot != (None,None):
+					#Gear found, calculate XP needed to return to end tile
 					totalTileXP = 0
 					while accessedTile[3]:
 						previousTile = accessedTile[3].pop()
-						tileXP = accessedTile[0].speed + math.ceil(accessedTile[0].mob/(currChar.charAtk+currChar.weaponAtk))
+						tileXP = previousTile.speed + math.ceil(previousTile.mob/(currChar.charAtk+currChar.weaponAtk))
 						currChar.updateChar(tileXP,(None, None),None)
 						totalTileXP += tileXP
 					return (current_xp + totalTileXP,currChar)
@@ -261,14 +329,23 @@ class Utilities():
 			(Game.Movement.getTileInDir(gameMap, currChar, "down"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
 			(Game.Movement.getTileInDir(gameMap, currChar, "left"),currChar,current_xp,accessedTile[3]+[currChar.tileOn]),
 			(Game.Movement.getTileInDir(gameMap, currChar, "right"),currChar,current_xp,accessedTile[3]+[currChar.tileOn])]
-			print("No weapon found, don't kill yourself tho")
+			print("No weapon found, fight the boss anyway")
 			return None
-		
 	def recurse(self, gameMap, character, lastDir):
 		'''
-		Recursive function that recursively paths itself toward the exit.
-		Follows ideas stated in the explanation of minXP()
+		Explanation: Main function that uses all the above helper functions to calculate XP.
+		Recursive function that creates recursive calls of a path from start to end.
+		Once path is found, all recursive calls return an integer that is collected into global_result
+		in the main function.
+		Comments below outline how the algorithm functions (Warning: Alot of comments).
+		
+		Running time analysis: For one recursive call, is constant running time assuming all operations/functions
+		run in constant running time.
+		For total recursive calls, the running time is explained in __init()__.
+		
+		Returns: The sum of XP acquired on recurse()'s current tile and any further recursive calls.
 		'''
+		#~ print("I'm recursing: "+str(lastDir)+" and on "+str(character.tileOn))
 		#Base Case: If solution already found, return an infinite number
 		if self.global_finished or self.global_restart:
 			return float('inf')
@@ -277,22 +354,32 @@ class Utilities():
 			self.global_finished = True
 			boss = 1000
 			return math.ceil(boss/(character.charAtk+character.weaponAtk))
-		#If intializing recursive function, don't calculate tileXP. Otherwise, get tileXP and weapon if available.
+		#Base Case: Tile is already searched
+		if character.tileOn in self.global_searched_tiles:
+			return float('inf')
+		#Calculate tileXP. (Ignore if it's the first tile)
 		if lastDir != "stay":
 			curr_xp = Utilities.tile_xp(character, character.tileOn)
 			dump = character.updateChar(curr_xp, character.tileOn.weaponLoot, None)
 		else:
 			curr_xp = 0
-		#Base Case: Item found on current tile that character doesn't have, restart recursive call.
+		#After all important base cases are conducted, add tile to 'searched'
+		self.global_searched_tiles.add(character.tileOn)
+		#Base Case: Item found on current tile that character doesn't have, 
+		#restart recursive call and remove gear as a priority.
 		if character.gear[0] == None and character.tileOn.requirementLoot == "Climbing Gear":
 			#NOTE: Becareful of finalRequirements algorithm
 			self.global_restart = True
 			character.gear[0] = "Climbing Gear"
+			if "Climbing Gear" in self.global_priority:
+				self.global_priority.remove("Climbing Gear")
 			self.global_character = copy.deepcopy(character)
 			return curr_xp
 		elif character.gear[1] == None and character.tileOn.requirementLoot == "Gate Key":
 			self.global_restart = True
-			character.gear[0] = "Gate Key"
+			character.gear[1] = "Gate Key"
+			if "Gate Key" in self.global_priority:
+				self.global_priority.remove("Gate Key")
 			self.global_character = copy.deepcopy(character)
 			return curr_xp
 		#Base Case: Is beside final boss tile, run last requirements.
@@ -300,8 +387,10 @@ class Utilities():
 			#Guranteed to fight boss, just use a return.
 			directions = Utilities.boss_direction(gameMap, character.tileOn.idx)
 			character.tileOn = Game.Movement.getTileInDir(gameMap, character, directions[0])
-			return curr_xp + Utilities.recurse(self, gameMap, character, directions[0]) #+Utilities.final_requirements(gameMap, character) omitted for testing purposes
+			
+			return Utilities.final_requirements(gameMap, character) + curr_xp + Utilities.recurse(self, gameMap, character, directions[0]) 
 		
+		#Recursive Case: Move to next possible tile
 		directions = Utilities.boss_direction(gameMap, character.tileOn.idx)
 		old_directions = Utilities.boss_direction(gameMap, character.tileOn.idx) #Used incase after analysis, len(directions) == 0
 		currTile = character.tileOn
@@ -326,14 +415,29 @@ class Utilities():
 			#However, if one of them has a key, prioritize key. (Include climbing gear)
 			tile1 = Game.Movement.getTileInDir(gameMap, character, directions[0])
 			tile2 = Game.Movement.getTileInDir(gameMap, character, directions[1])
-			#Compare XPs, if equal take the vertical value.
+			#Compare XPs. If equal, move in arbitrary direction.
 			if Utilities.tile_xp(character, tile1) > Utilities.tile_xp(character, tile2):
 				character.tileOn = tile2
 				moving_direction = directions[1]
 			else: #tile_xp(character, tile1) <= tile_xp(character, tile2)
 				character.tileOn = tile1
 				moving_direction = directions[0]
-			#Check for priorities (lost inventory items).
+			#Check for weapon priorities (only if character has no weapon).
+			if character.weaponAtk == 0:
+				#Check if tiles have weapon
+				if tile1.weaponLoot != (None,None):
+					#Check if tile 2 has a weapon, and if its better
+					if tile2.weaponLoot != (None, None) and tile2.weaponLoot[1] > tile1.weaponLoot[1]:
+						character.tileOn = tile2
+						moving_direction = directions[1]
+					else:
+						character.tileOn = tile1
+						moving_direction = directions[0]
+				elif tile2.weaponLoot != (None,None):
+					character.tileOn = tile2
+					moving_direction = directions[1]
+			#Check for priorities (gear to pass gates/hills).
+			#Prioritize items the most!
 			if len(self.global_priority) > 0:
 				for priority in self.global_priority:
 					#If tile1 contains priority loot, go to tile1
@@ -346,17 +450,18 @@ class Utilities():
 						break
 					#If tile2 contains priority loot, go to tile2
 					elif priority == tile2.requirementLoot:
-						if tile1.requirementLoot == tile2.requirementLoot:
-							#If tiles have the same loot, ignore priority
-							break
 						character.tileOn = tile2
 						moving_direction = directions[1]
 						break
 			#Finally after all the decision-making, call recursive function
 			result = curr_xp + Utilities.recurse(self, gameMap, character, moving_direction)
 			if result >= float('inf'):
-				#NOTE TODO:!!!!Use other direction:
+				#If recommended direction doesn't work, use other direction
 				character = copy.deepcopy(oldCharacter)
+				if moving_direction == directions[0]:
+					moving_direction = directions[1]
+				else:
+					moving_direction = direction[0]
 				result = curr_xp + Utilities.recurse(self, gameMap, character, moving_direction)
 			else:
 				return result
@@ -373,7 +478,7 @@ class Utilities():
 		if result >= float('inf'):
 			#Attempt to use directions never tried before. If no directions work, return infinite.
 			#Reset tile to initial tile
-			#NOTE: Might want to apply priorities here, perhaps after algorithm is complete
+			#Possible improvement: Apply priorities here
 			character.tileOn = currTile
 			allDirections = set(["up","down","left","right"])
 			#Omit direction that character came from until all paths have been tried.
@@ -381,7 +486,8 @@ class Utilities():
 				allDirections.remove(direction)
 			#For cases where dead end is not found on initial tile, remove direction whereas user came from.
 			if lastDir != "stay":
-				allDirections.remove(Utilities.opposite_direction(lastDir))
+				if Utilities.opposite_direction(lastDir) in allDirections:
+					allDirections.remove(Utilities.opposite_direction(lastDir))
 			#Now with all directions not tried yet, try them.
 			for direction in allDirections:
 				if Game.Movement.getTileInDir(gameMap,oldCharacter,direction) != None:
@@ -420,7 +526,7 @@ class Winnable():
 				if "Gate Key" not in acquiredRequirements:
 					specSearch.add(tileTerm)
 					continue
-			if tileTerm.requirement == "hills": #Check if requirements contain gear
+			if tileTerm.requirement == "hill": #Check if requirements contain gear
 				if "Climbing Gear" not in acquiredRequirements:
 					specSearch.add(tileTerm)
 					continue
@@ -436,7 +542,7 @@ class Winnable():
 								searchTiles.add(term)
 					elif tileTerm.requirementLoot == "Climbing Gear":
 						for term in specSearch:
-							if term.requirement == "hills":
+							if term.requirement == "hill":
 								searchTiles.add(term)
 
 			if tileTerm.label == "end": #if tile is end, game is winnable
